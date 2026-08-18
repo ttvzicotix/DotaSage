@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 const EFFECTIVE = 'August 18, 2026';
+const PROJECT_ISSUES = 'https://github.com/ttvzicotix/DotaSage/issues';
 
 export default function LegalModal({ open, onClose }) {
   const [tab, setTab] = useState('notice');
@@ -47,7 +48,7 @@ export default function LegalModal({ open, onClose }) {
           <h4>Current local storage</h4>
           <p>API response caches and optional post-match feedback can be stored in browser localStorage on the device running DotaSage. The current build does not upload that feedback to a DotaSage account database.</p>
           <h4>Public game data</h4>
-          <p>If a user explicitly connects a Dota account in a future profile flow, DotaSage may request public profile, hero, matchup, and match-history information from OpenDota. Public-source coverage may be incomplete.</p>
+          <p>If a user explicitly connects a Dota account, DotaSage can request public profile, hero, matchup, and match-history information from OpenDota. Public-source coverage may be incomplete.</p>
           <h4>Local Live Sync</h4>
           <p>Optional Dota Game State Integration uses a loopback service on the user's own computer. Live game state should remain local and should not be uploaded to Vercel, OpenDota, or an AI provider.</p>
           <h4>Hosting</h4>
@@ -58,8 +59,8 @@ export default function LegalModal({ open, onClose }) {
         {tab === 'contact' && <>
           <h3>Contact</h3>
           <p>DotaSage is an independent open-source Dota 2 companion project.</p>
-          <p>Project questions, bugs, and feature requests should be handled through the public GitHub repository until a dedicated project email is intentionally created.</p>
-          <p className="contact-placeholder">PROJECT CONTACT · GITHUB</p>
+          <p>Until a dedicated DotaSage mailbox is created, use GitHub Issues for project questions, bugs, and feature requests.</p>
+          <p><a href={PROJECT_ISSUES} target="_blank" rel="noreferrer">OPEN DOTASAGE GITHUB ISSUES ↗</a></p>
         </>}
       </div>
       <footer className="legal-footer">Not legal advice. Have any materially expanded public version reviewed for the actual jurisdiction and data practices involved.</footer>
