@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.vercel/
+
+.env
+.env.*
+!.env.example
+
+archive/
+
+LIVE_SYNC_INSTALL_LOG.txt
+LIVE_SYNC_INSTALL_PATH.txt

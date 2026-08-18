@@ -1,0 +1,42 @@
+# Contributing to DotaSage
+
+DotaSage is an experimental, free and non-commercial Dota 2 draft/coaching
+companion.
+
+## Ground rules
+
+- Keep recommendations evidence-aware. Do not present modeled scores as
+  empirical statistics.
+- Do not commit API keys, Steam credentials, Vercel secrets, private match
+  data, or other sensitive information.
+- Do not add Valve-owned assets directly to the repository unless their
+  redistribution is clearly permitted. Prefer runtime references to approved
+  public sources where appropriate.
+- Keep Live Sync local-only by default. Any change that sends GSI state off the
+  player's machine requires explicit design/security review.
+- Preserve the unofficial/non-affiliation notice.
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+Production verification:
+
+```bash
+npm run build
+```
+
+On Windows, the included `.bat` launchers use `.cmd` variants of npm/Vercel to
+avoid common PowerShell execution-policy issues.
+
+## Pull requests
+
+Keep PRs focused. Explain:
+
+1. what changed,
+2. why it changed,
+3. what evidence or data source supports recommendation/scoring changes, and
+4. how the change was tested.
