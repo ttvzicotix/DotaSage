@@ -45,6 +45,18 @@ function ownItems(payload) {
     .filter(value => /^item_/.test(value.name));
 }
 
+function dotaAccountId(player) {
+  const direct = player?.accountid ?? player?.account_id;
+  if (/^\d+$/.test(String(direct ?? ''))) return String(direct);
+  const steam = player?.steamid ?? player?.steam_id;
+  try {
+    const steam64 = BigInt(String(steam ?? ''));
+    const base = 76561197960265728n;
+    if (steam64 >= base) return String(steam64 - base);
+  } catch {}
+  return null;
+}
+
 function sanitize(payload) {
   const hero = payload?.hero && typeof payload.hero === 'object' ? payload.hero : firstNamed(payload?.hero, 'npc_dota_hero_');
   const player = payload?.player && typeof payload.player === 'object' ? payload.player : null;
@@ -71,6 +83,7 @@ function sanitize(payload) {
       alive: hero.alive ?? null,
     } : null,
     player: player ? {
+      account_id: dotaAccountId(player),
       kills: player.kills ?? null,
       deaths: player.deaths ?? null,
       assists: player.assists ?? null,
@@ -154,5 +167,5 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, HOST, () => {
   console.log(`DotaSage Live Sync listening only on http://${HOST}:${PORT}`);
   console.log('Waiting for Dota 2 GSI. This bridge does not upload game state anywhere.');
-  console.log('If Dota never sends a POST: verify the GSI cfg, fully restart Dota, then run CHECK_LIVE_SYNC.bat.');
+  console.log('If Dota never sends a POST: verify the GSI cfg, fully restart Dota, then run scripts/windows/CHECK_LIVE_SYNC.bat.');
 });
