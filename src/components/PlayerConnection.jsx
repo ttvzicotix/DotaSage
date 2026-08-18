@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchLocalGameState } from '../services/localGsi';
+import './playerConnection.css';
 
 export default function PlayerConnection({ accountId, source, onConnect, onForget }) {
   const [value, setValue] = useState(accountId || '');
