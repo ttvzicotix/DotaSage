@@ -76,7 +76,7 @@ export default function ProfileModal({ open, onClose, profile, player, winLoss, 
       <section className="profile-modal v07-profile-modal" onMouseDown={e => e.stopPropagation()}>
         <div className="profile-modal-head">
           <div className="profile-modal-identity">
-            {avatar ? <img src={avatar} alt="" /> : <div className="avatar-fallback">Z</div>}
+            {avatar ? <img src={avatar} alt="" /> : <div className="avatar-fallback">P</div>}
             <div><div className="eyebrow">PLAYER INTELLIGENCE</div><h2>{name}</h2><span>Dota ID {profile.accountId}</span></div>
           </div>
           <button className="modal-close" onClick={onClose}>×</button>
@@ -123,7 +123,7 @@ export default function ProfileModal({ open, onClose, profile, player, winLoss, 
           <div className="history-summary-strip"><span><b>{allSummary.wins.toLocaleString()}</b> wins in loaded rows</span><span><b>{allSummary.losses.toLocaleString()}</b> losses</span><span><b>{allSummary.gpm || '—'}</b> avg GPM*</span><span><b>{allSummary.xpm || '—'}</b> avg XPM*</span><small>*only rows where OpenDota includes those detailed fields</small></div>
           <div className="all-match-list">{filteredHistory.slice(0, visibleCount).map(match => <MatchRow key={match.match_id} match={match} hero={byId.get(Number(match.hero_id))} />)}{visibleCount < filteredHistory.length && <button className="load-more-history" onClick={()=>setVisibleCount(v=>v+100)}>SHOW 100 MORE · {filteredHistory.length-visibleCount} REMAINING</button>}</div>
         </section>}
-        <div className="profile-privacy-note">OpenDota exposes separate player W/L, hero-history, recent-match, and player-match endpoints, so their counts can legitimately differ. v0.8 pages history by the number of rows the API actually returns to avoid skipping capped pages. DotaSage labels each source instead of pretending one number is your definitive client lifetime total. Full history loads only when you open this profile.</div>
+        <div className="profile-privacy-note">OpenDota exposes separate player W/L, hero-history, recent-match, and player-match endpoints, so their counts can legitimately differ. DotaSage labels each source instead of pretending one number is your definitive client lifetime total. Full history loads only when you open this profile.</div>
       </section>
     </div>
   );
