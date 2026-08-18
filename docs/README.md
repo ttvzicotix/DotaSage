@@ -1,5 +1,6 @@
 # DotaSage documentation
 
+- [Roadmap](roadmap.md)
 - [Live Sync setup](live-sync-setup.md)
 - [Data sources](data-sources.md)
 - [Privacy](privacy.md)
