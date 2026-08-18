@@ -1,8 +1,11 @@
 @echo off
-cd /d "%~dp0"
+setlocal
+for %%I in ("%~dp0..\..") do set "ROOT=%%~fI"
+cd /d "%ROOT%"
+title DotaSage Local Development
 echo.
 echo ========================================
-echo   DotaSage local development server :5175
+echo   DotaSage local development server
 echo ========================================
 echo.
 if not exist node_modules (
@@ -14,5 +17,5 @@ call npm.cmd run dev
 goto :eof
 :error
 echo.
-echo DotaSage could not start. Copy this window's error into your debugging notes.
+echo DotaSage could not start. Copy this window's error into ChatGPT.
 pause

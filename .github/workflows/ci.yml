@@ -1,0 +1,23 @@
+name: Verify DotaSage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run build
+      - name: Guard current DotaSage branding
+        run: |
+          if grep -R -n -I --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist "DraftSage" .; then
+            echo "Old DraftSage branding found in tracked source/docs."
+            exit 1
+          fi
