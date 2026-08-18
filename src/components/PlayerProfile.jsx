@@ -1,3 +1,5 @@
+import PlayerConnection from './PlayerConnection';
+
 const MEDALS = ['', 'Herald', 'Guardian', 'Crusader', 'Archon', 'Legend', 'Ancient', 'Divine', 'Immortal'];
 
 function rankLabel(rankTier) {
@@ -15,18 +17,50 @@ function mmrEstimate(player) {
   return Number.isFinite(value) && value > 0 ? Math.round(value) : null;
 }
 
+function profileSource() {
+  try { return localStorage.getItem('dotasage:player-source') || 'saved'; }
+  catch { return 'saved'; }
+}
+
+function savePlayer(rawId, source = 'manual') {
+  const value = String(rawId ?? '').trim();
+  if (!/^\d+$/.test(value)) return false;
+  const numeric = Number(value);
+  if (!Number.isSafeInteger(numeric) || numeric <= 0 || numeric > 4294967295) return false;
+  try {
+    localStorage.setItem('dotasage:player-account-id', value);
+    localStorage.setItem('dotasage:player-source', source);
+  } catch { return false; }
+  window.location.reload();
+  return true;
+}
+
+function forgetPlayer() {
+  try {
+    localStorage.removeItem('dotasage:player-account-id');
+    localStorage.removeItem('dotasage:player-source');
+  } catch {}
+  window.location.reload();
+}
+
 export default function PlayerProfile({ profile, player, loading, personalSummary, winLoss, recentSummary, onOpenProfile }) {
   const avatar = player?.profile?.avatarfull || player?.profile?.avatarmedium;
   const name = player?.profile?.personaname || profile.displayName;
   const mmr = mmrEstimate(player);
   const totalGames = Number(winLoss?.win || 0) + Number(winLoss?.lose || 0);
   const overallWr = totalGames ? Number(winLoss.win || 0) / totalGames * 100 : null;
-  return (
+
+  if (!profile.accountId) {
+    return <PlayerConnection accountId={null} source={null} onConnect={savePlayer} onForget={forgetPlayer} />;
+  }
+
+  return <>
+    <PlayerConnection accountId={profile.accountId} source={profileSource()} onConnect={savePlayer} onForget={forgetPlayer} />
     <section className="player-card glass-panel clickable-profile" onClick={onOpenProfile} role="button" tabIndex={0} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onOpenProfile?.()} title="Open player profile and match history">
       <div className="player-topline"><span>PLAYER // LIVE</span><i /></div>
       <div className="player-row">
         <div className="avatar-wrap">
-          {avatar ? <img src={avatar} alt="" /> : <div className="avatar-fallback">Z</div>}
+          {avatar ? <img src={avatar} alt="" /> : <div className="avatar-fallback">P</div>}
           <span className="online-dot" />
         </div>
         <div className="player-copy">
@@ -52,7 +86,7 @@ export default function PlayerProfile({ profile, player, loading, personalSummar
         <span><b>{loading ? '…' : personalSummary.played}</b> heroes played</span>
         <span><b>{loading ? '…' : personalSummary.learning}</b> low / learning</span>
       </div>
-    <div className="profile-open-hint">VIEW PROFILE · HERO HISTORY · RECENT MATCHES <b>→</b></div>
+      <div className="profile-open-hint">VIEW PROFILE · HERO HISTORY · RECENT MATCHES <b>→</b></div>
     </section>
-  );
+  </>;
 }
