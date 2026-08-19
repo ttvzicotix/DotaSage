@@ -1,12 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { fetchLocalGameState } from '../services/localGsi';
+import { listRememberedPlayers } from '../services/playerStorage';
 
 export default function PlayerConnection({ accountId, source, onConnect, onForget }) {
   const [value, setValue] = useState(accountId || '');
   const [status, setStatus] = useState('');
   const [detecting, setDetecting] = useState(false);
+  const [remembered, setRemembered] = useState(() => listRememberedPlayers());
 
   useEffect(() => { setValue(accountId || ''); }, [accountId]);
+  useEffect(() => { setRemembered(listRememberedPlayers()); }, [accountId]);
+
+  const otherRemembered = useMemo(
+    () => remembered.filter(row => String(row.accountId) !== String(accountId || '')).slice(0, 5),
+    [remembered, accountId],
+  );
 
   async function detect(silent = false) {
     if (!silent) setStatus('Checking the local DotaSage bridge…');
@@ -56,5 +64,12 @@ export default function PlayerConnection({ accountId, source, onConnect, onForge
       <button className="player-detect-button" onClick={() => detect(false)} disabled={detecting}>{detecting ? 'CHECKING LIVE SYNC…' : 'DETECT FROM LIVE SYNC'}</button>
       <small className="player-connect-help">{status || 'Your Dota ID is stored only in this browser. Live detection only contacts 127.0.0.1 after you ask it to.'}</small>
     </>}
+    {otherRemembered.length > 0 && <div className="remembered-players">
+      <small>REMEMBERED ON THIS DEVICE</small>
+      <div>{otherRemembered.map(row => <button key={row.accountId} onClick={() => onConnect?.(row.accountId, 'saved')} title={`Switch to ${row.name || row.accountId}`}>
+        {row.avatar ? <img src={row.avatar} alt="" /> : <span className="remembered-avatar">P</span>}
+        <span><b>{row.name || `Dota ${row.accountId}`}</b><small>ID {row.accountId}</small></span>
+      </button>)}</div>
+    </div>}
   </section>;
 }
