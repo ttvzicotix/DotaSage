@@ -57,10 +57,35 @@ function dotaAccountId(player) {
   return null;
 }
 
+function gameStateInfo(rawState) {
+  const raw = String(rawState || '');
+  const labels = {
+    DOTA_GAMERULES_STATE_INIT: 'INITIALIZING',
+    DOTA_GAMERULES_STATE_WAIT_FOR_PLAYERS_TO_LOAD: 'LOADING PLAYERS',
+    DOTA_GAMERULES_STATE_HERO_SELECTION: 'HERO SELECTION',
+    DOTA_GAMERULES_STATE_STRATEGY_TIME: 'STRATEGY TIME',
+    DOTA_GAMERULES_STATE_TEAM_SHOWCASE: 'TEAM SHOWCASE',
+    DOTA_GAMERULES_STATE_PRE_GAME: 'PRE-GAME',
+    DOTA_GAMERULES_STATE_GAME_IN_PROGRESS: 'LIVE MATCH',
+    DOTA_GAMERULES_STATE_POST_GAME: 'POST-GAME',
+    DOTA_GAMERULES_STATE_DISCONNECT: 'DISCONNECTED',
+  };
+  const fallback = raw
+    .replace(/^DOTA_GAMERULES_STATE_/, '')
+    .replace(/_/g, ' ')
+    .trim();
+  return {
+    label: labels[raw] || fallback || null,
+    statsActive: raw === 'DOTA_GAMERULES_STATE_GAME_IN_PROGRESS' || raw === 'DOTA_GAMERULES_STATE_POST_GAME',
+  };
+}
+
 function sanitize(payload) {
   const hero = payload?.hero && typeof payload.hero === 'object' ? payload.hero : firstNamed(payload?.hero, 'npc_dota_hero_');
   const player = payload?.player && typeof payload.player === 'object' ? payload.player : null;
   const map = payload?.map && typeof payload.map === 'object' ? payload.map : {};
+  const gameState = gameStateInfo(map.game_state);
+  const stat = value => gameState.statsActive ? (value ?? null) : null;
   return {
     connected: true,
     updatedAt,
@@ -68,7 +93,9 @@ function sanitize(payload) {
     map: {
       clock_time: map.clock_time ?? null,
       game_time: map.game_time ?? null,
-      game_state: map.game_state ?? null,
+      game_state: gameState.label,
+      game_state_raw: map.game_state ?? null,
+      stats_active: gameState.statsActive,
       matchid: map.matchid ?? null,
       daytime: map.daytime ?? null,
       roshan_state: map.roshan_state ?? null,
@@ -84,15 +111,15 @@ function sanitize(payload) {
     } : null,
     player: player ? {
       account_id: dotaAccountId(player),
-      kills: player.kills ?? null,
-      deaths: player.deaths ?? null,
-      assists: player.assists ?? null,
-      last_hits: player.last_hits ?? null,
-      denies: player.denies ?? null,
-      gold: player.gold ?? null,
-      gpm: player.gpm ?? null,
-      xpm: player.xpm ?? null,
-      net_worth: player.net_worth ?? null,
+      kills: stat(player.kills),
+      deaths: stat(player.deaths),
+      assists: stat(player.assists),
+      last_hits: stat(player.last_hits),
+      denies: stat(player.denies),
+      gold: stat(player.gold),
+      gpm: stat(player.gpm),
+      xpm: stat(player.xpm),
+      net_worth: stat(player.net_worth),
       team_name: player.team_name ?? null,
       activity: player.activity ?? null,
     } : null,
