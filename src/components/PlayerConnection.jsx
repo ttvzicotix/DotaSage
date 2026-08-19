@@ -72,7 +72,7 @@ export default function PlayerConnection({ accountId, source, onConnect, onForge
     </>}
     {otherRemembered.length > 0 && <div className="remembered-players">
       <div className="remembered-head"><small>REMEMBERED ON THIS DEVICE</small><button onClick={clearRemembered}>CLEAR REMEMBERED</button></div>
-      <div>{otherRemembered.map(row => <button key={row.accountId} onClick={() => onConnect?.(row.accountId, 'saved')} title={`Switch to ${row.name || row.accountId}`}>
+      <div className="remembered-list">{otherRemembered.map(row => <button key={row.accountId} onClick={() => onConnect?.(row.accountId, 'saved')} title={`Switch to ${row.name || row.accountId}`}>
         {row.avatar ? <img src={row.avatar} alt="" /> : <span className="remembered-avatar">P</span>}
         <span><b>{row.name || `Dota ${row.accountId}`}</b><small>ID {row.accountId}</small></span>
       </button>)}</div>
