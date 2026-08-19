@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import PlayerConnection from './PlayerConnection';
+import { clearPlayerCache } from '../services/openDota';
 import { forgetPlayerSnapshot, loadPlayerSnapshot, savePlayerSnapshot } from '../services/playerStorage';
+import '../styles/player-profile-status.css';
 
 const MEDALS = ['', 'Herald', 'Guardian', 'Crusader', 'Archon', 'Legend', 'Ancient', 'Divine', 'Immortal'];
 
@@ -22,6 +24,18 @@ function mmrEstimate(player) {
 function profileSource() {
   try { return localStorage.getItem('dotasage:player-source') || 'saved'; }
   catch { return 'saved'; }
+}
+
+function ageLabel(timestamp) {
+  const age = Date.now() - Number(timestamp || 0);
+  if (!Number.isFinite(age) || age < 0) return null;
+  const minutes = Math.floor(age / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 function savePlayer(rawId, source = 'manual') {
@@ -46,6 +60,12 @@ function forgetPlayer(accountId) {
   window.location.reload();
 }
 
+function refreshPlayer(accountId, event) {
+  event?.stopPropagation?.();
+  clearPlayerCache(accountId);
+  window.location.reload();
+}
+
 export default function PlayerProfile({ profile, player, loading, personalSummary, winLoss, recentSummary, onOpenProfile }) {
   const snapshot = profile.accountId ? loadPlayerSnapshot(profile.accountId) : null;
   const liveAvatar = player?.profile?.avatarfull || player?.profile?.avatarmedium || null;
@@ -65,6 +85,15 @@ export default function PlayerProfile({ profile, player, loading, personalSummar
     : snapshot?.personalSummary || personalSummary;
   const effectiveRankTier = player?.rank_tier ?? snapshot?.rankTier ?? null;
   const usingSavedProfile = !player && Boolean(snapshot?.name);
+  const noPublicMatches = !loading && !liveTotalGames && !recentSummary?.count && !personalSummary?.played;
+  const savedAge = snapshot?.savedAt ? ageLabel(snapshot.savedAt) : null;
+  const dataLabel = loading && !snapshot
+    ? 'SYNCING OPENDOTA'
+    : usingSavedProfile
+      ? `SAVED LOCALLY${savedAge ? ` · ${savedAge}` : ''}`
+      : noPublicMatches
+        ? 'PROFILE FOUND · NO PUBLIC MATCH HISTORY'
+        : 'OPENDOTA DATA';
 
   useEffect(() => {
     if (!profile.accountId || loading) return;
@@ -91,7 +120,8 @@ export default function PlayerProfile({ profile, player, loading, personalSummar
   return <>
     <PlayerConnection accountId={profile.accountId} source={profileSource()} onConnect={savePlayer} onForget={() => forgetPlayer(profile.accountId)} />
     <section className="player-card glass-panel clickable-profile" onClick={onOpenProfile} role="button" tabIndex={0} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onOpenProfile?.()} title="Open player profile and match history">
-      <div className="player-topline"><span>PLAYER // {usingSavedProfile ? 'SAVED' : 'LIVE'}</span><i /></div>
+      <div className="player-topline"><span>PLAYER // {usingSavedProfile ? 'SAVED' : 'CONNECTED'}</span><i /></div>
+      <div className="player-data-status"><span className={usingSavedProfile ? 'saved' : noPublicMatches ? 'limited' : 'fresh'}>{dataLabel}</span><button onClick={event => refreshPlayer(profile.accountId, event)}>REFRESH OPENDOTA</button></div>
       <div className="player-row">
         <div className="avatar-wrap">
           {avatar ? <img src={avatar} alt="" /> : <div className="avatar-fallback">P</div>}
@@ -120,7 +150,7 @@ export default function PlayerProfile({ profile, player, loading, personalSummar
         <span><b>{loading && !snapshot ? '…' : effectivePersonal?.played ?? 0}</b> heroes played</span>
         <span><b>{loading && !snapshot ? '…' : effectivePersonal?.learning ?? 0}</b> low / learning</span>
       </div>
-      {!loading && !liveTotalGames && !recentSummary?.count && <div className="profile-open-hint">PROFILE FOUND · NO PUBLIC MATCH RECORDS RETURNED</div>}
+      {noPublicMatches && <div className="profile-availability-note">OpenDota identified this account but returned no public match-history data for the current requests. Objective draft tools still work; personal-history scoring may be unavailable.</div>}
       <div className="profile-open-hint">VIEW PROFILE · HERO HISTORY · RECENT MATCHES <b>→</b></div>
     </section>
   </>;
