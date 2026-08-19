@@ -95,7 +95,7 @@ export async function fetchHeroes() {
 }
 
 // The public build ships without a hardcoded player identity. These helpers return
-// neutral values until an explicit account ID is supplied by a future profile/sign-in flow.
+// neutral values until a player explicitly connects a public Dota account ID.
 export async function fetchPlayer(accountId) {
   if (!accountId) return null;
   return getJson(`/players/${accountId}`, { ttlMs: 10 * 60 * 1000, cacheKey: `player:${accountId}` });
@@ -165,12 +165,51 @@ export async function fetchHeroItemPopularity(heroId) {
   return data;
 }
 
+function stripItemPrefix(value) {
+  return String(value ?? '').replace(/^item_/, '');
+}
+
+export function normalizeItemConstants(raw = {}) {
+  const entries = Object.entries(raw || {}).filter(([, item]) => item && typeof item === 'object');
+  const keyById = new Map();
+  for (const [key, item] of entries) {
+    if (item?.id != null) keyById.set(String(Number(item.id)), stripItemPrefix(item.name || key));
+  }
+
+  const normalizeComponent = component => {
+    let value = component;
+    if (value && typeof value === 'object') value = value.name ?? value.key ?? value.id;
+    const stripped = stripItemPrefix(value);
+    if (!stripped) return null;
+    if (/^\d+$/.test(stripped)) return keyById.get(String(Number(stripped))) || stripped;
+    return stripped;
+  };
+
+  const indexed = {};
+  for (const [rawKey, rawItem] of entries) {
+    const key = stripItemPrefix(rawItem.name || rawKey);
+    const item = {
+      ...rawItem,
+      // dotaconstants recipes use canonical internal names (for example `pers`,
+      // `ultimate_orb`, `blink`). Keep that namespace explicit so recipe code
+      // never has to guess from display names or numeric IDs.
+      name: key,
+      key,
+      components: Array.isArray(rawItem.components)
+        ? rawItem.components.map(normalizeComponent).filter(Boolean)
+        : rawItem.components,
+    };
+    indexed[key] = item;
+    indexed[`item_${key}`] = item;
+    if (item.id != null) indexed[String(Number(item.id))] = item;
+  }
+  return indexed;
+}
+
 export async function fetchItems() {
   if (itemsCache) return itemsCache;
   const raw = await getJson('/constants/items', { ttlMs: 24 * 60 * 60 * 1000, cacheKey: 'items' });
-  const indexed = { ...raw };
-  Object.entries(raw || {}).forEach(([key, item]) => { if (item?.id != null) indexed[String(item.id)] = item; if (item?.name) indexed[item.name] = item; indexed[key] = item; });
-  itemsCache = indexed;
+  itemsCache = normalizeItemConstants(raw);
   return itemsCache;
 }
 
