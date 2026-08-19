@@ -47,6 +47,19 @@ function cacheWrite(key, value) {
   catch { /* localStorage can be unavailable/private; memory cache still works */ }
 }
 
+export function clearPlayerCache(accountId) {
+  if (!accountId || typeof window === 'undefined') return;
+  const id = String(accountId);
+  const exact = [`player:${id}`, `playerHeroes:${id}`, `wl:${id}`, `recent:${id}`].map(key => `dotasage:${key}`);
+  try {
+    exact.forEach(key => window.localStorage.removeItem(key));
+    for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+      const key = window.localStorage.key(index);
+      if (key?.startsWith(`dotasage:history:${id}:`)) window.localStorage.removeItem(key);
+    }
+  } catch {}
+}
+
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function getJson(path, { ttlMs = 0, cacheKey = path, retries = 2 } = {}) {
