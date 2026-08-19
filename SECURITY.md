@@ -1,6 +1,19 @@
 # DotaSage Security Baseline
 
-DotaSage v0.15 reads public Dota/OpenDota profile data and optionally a local-only Dota GSI stream. It does not currently authenticate users or store private account data on a DotaSage server.
+DotaSage v0.17 reads public Dota/OpenDota profile data and can optionally consume a local-only Dota Game State Integration stream. It does not currently authenticate users or store private account data in a DotaSage database.
+
+## Reporting a security issue
+
+Email `dotasage.contact@gmail.com` with `SECURITY` in the subject. Please do not post working exploit details, secrets, or private-user data in a public GitHub issue.
+
+For ordinary bugs and feature requests, use GitHub Issues instead.
+
+## Current player-identity boundary
+
+- Basic use does not require a DotaSage account.
+- A numeric public Dota account ID can be stored in the user's browser localStorage for personalization.
+- The local GSI companion can derive that public account ID from Valve's local player payload when the necessary identifier is present.
+- A browser-supplied Dota account ID is **not authentication** and must never be treated as proof that a user owns that Steam/Dota identity.
 
 ## Rules for future Steam sign-in
 
@@ -12,21 +25,21 @@ DotaSage v0.15 reads public Dota/OpenDota profile data and optionally a local-on
 - Add CSRF protection for state-changing authenticated endpoints, input validation, authorization checks, rate limiting, and audit logging before saved/private user data is introduced.
 - Minimize stored player data. Public match history can be re-fetched; preferences should be stored only when needed.
 
-## v0.5 controls
+## Hosted application controls
 
 - Vercel security headers include CSP, frame blocking, nosniff, Referrer-Policy, Permissions-Policy, and HSTS.
-- Browser network access is restricted by CSP to DotaSage itself and OpenDota for API reads; images may load over HTTPS for Steam/Dota assets.
+- Browser network access is restricted by CSP to the endpoints intentionally required by the app.
 - The Game Plan AI route remains server-side. No provider key belongs in the browser.
+- Vercel Web Analytics is integrated for basic site traffic. The current app does not intentionally attach Dota account IDs, draft contents, or local GSI payloads to custom analytics events.
 
-This is a baseline, not a claim of completed security certification. Authentication, database access, saved settings, and production APIs need their own threat model and tests before launch to other users.
+## Local GSI companion
 
-## Local GSI bridge (v0.12 beta)
-
-- The included Node bridge binds to `127.0.0.1`, not `0.0.0.0`, so it is not intentionally exposed to the LAN/Internet.
-- Dota posts to the local bridge using a config token. The token is defense-in-depth for a loopback-only prototype, not an Internet credential.
+- The included Node bridge binds to `127.0.0.1`, not `0.0.0.0`, so it is not intentionally exposed to the LAN or Internet.
+- Dota posts to the local bridge using a config token. The current static token is defense-in-depth for a loopback-only prototype and remains scheduled to become per-install randomized.
 - The bridge stores only the latest game-state payload in process memory and serves a sanitized subset to the local DotaSage browser session.
-- DotaSage does not upload the local GSI payload to Vercel or the AI endpoint in v0.15.
+- The production UI requires an explicit user action before attempting the localhost connection.
+- Enemy hidden state is not derived from player-mode GSI; enemy-item reactions are based only on items the user manually records as observed.
+- Live GSI state is not intentionally uploaded to Vercel or the AI endpoint by the current Live Sync path.
 - Do not change the bridge binding to a public/LAN address without adding real authentication, origin restrictions, transport security, and threat review.
 
-## v0.16 local companion boundary
-The production website and Dota GSI companion are separate processes. The companion binds only to loopback (`127.0.0.1`) and is never intended to listen on `0.0.0.0`. The production UI requires an explicit user click before attempting the localhost connection. Enemy hidden state is not derived from GSI; enemy-item reactions are based only on items the user manually records as observed.
+This is a baseline, not a claim of completed security certification. Authentication, database access, saved private settings, and production AI APIs need their own threat model and tests before launch to other users.

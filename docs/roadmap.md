@@ -71,5 +71,6 @@ Steam sign-in should not become mandatory merely to load public OpenDota history
 - Add automated unit/regression tests for scoring, lane assignment, item recipe resolution, aliases, and player-ID conversion.
 - Add release tags/notes once the Git workflow settles.
 - Keep Git commit author email privacy configured with a GitHub noreply address.
+- Incrementally split the legacy `src/styles.css` only after visual regression coverage protects the current layout.
 - Add issue templates when outside contributors/bug reports become frequent enough to justify them.
 - Revisit privacy/legal copy before adding Steam sessions, cloud-saved profiles, a database, or any new telemetry.

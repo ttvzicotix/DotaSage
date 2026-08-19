@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 const EFFECTIVE = 'August 18, 2026';
+const PROJECT_EMAIL = 'dotasage.contact@gmail.com';
 const PROJECT_ISSUES = 'https://github.com/ttvzicotix/DotaSage/issues';
 
 export default function LegalModal({ open, onClose }) {
@@ -44,22 +45,23 @@ export default function LegalModal({ open, onClose }) {
         </>}
         {tab === 'privacy' && <>
           <h3>Privacy Notice</h3>
-          <p>DotaSage is intentionally data-light. The public build ships without a hardcoded player identity or account ID and stores certain caches/preferences locally in the browser.</p>
+          <p>DotaSage is intentionally data-light. The public build ships without a hardcoded player identity or account ID and stores selected caches/preferences locally in the browser.</p>
           <h4>Current local storage</h4>
-          <p>API response caches and optional post-match feedback can be stored in browser localStorage on the device running DotaSage. The current build does not upload that feedback to a DotaSage account database.</p>
+          <p>The connected public Dota account ID, API response caches, and optional post-match feedback can be stored in browser localStorage on the device running DotaSage. The current build does not upload that feedback to a DotaSage account database.</p>
           <h4>Public game data</h4>
           <p>If a user explicitly connects a Dota account, DotaSage can request public profile, hero, matchup, and match-history information from OpenDota. Public-source coverage may be incomplete.</p>
           <h4>Local Live Sync</h4>
-          <p>Optional Dota Game State Integration uses a loopback service on the user's own computer. Live game state should remain local and should not be uploaded to Vercel, OpenDota, or an AI provider.</p>
-          <h4>Hosting</h4>
-          <p>If DotaSage is deployed through a hosting provider, that provider may process ordinary technical request information under its own privacy policy and service terms.</p>
+          <p>Optional Dota Game State Integration uses a loopback service on the user's own computer. Live game state is intended to remain local and is not intentionally sent to Vercel, OpenDota, or an AI provider by the current Live Sync path.</p>
+          <h4>Hosting + analytics</h4>
+          <p>DotaSage is hosted on Vercel and includes Vercel Web Analytics for basic site-traffic measurement. The current DotaSage code does not intentionally attach a Dota account ID, draft contents, or local GSI payload to custom analytics events.</p>
           <h4>Future account sign-in</h4>
           <p>Steam sign-in is not enabled in this build. Before account authentication or cloud-synced preferences are launched, DotaSage should publish an updated privacy policy describing sessions, stored account identifiers, retention, deletion, security controls, and user choices.</p>
         </>}
         {tab === 'contact' && <>
           <h3>Contact</h3>
           <p>DotaSage is an independent open-source Dota 2 companion project.</p>
-          <p>Until a dedicated DotaSage mailbox is created, use GitHub Issues for project questions, bugs, and feature requests.</p>
+          <p>Email: <a href={`mailto:${PROJECT_EMAIL}`}>{PROJECT_EMAIL}</a></p>
+          <p>For bugs and feature requests, GitHub Issues remains the public project tracker.</p>
           <p><a href={PROJECT_ISSUES} target="_blank" rel="noreferrer">OPEN DOTASAGE GITHUB ISSUES ↗</a></p>
         </>}
       </div>

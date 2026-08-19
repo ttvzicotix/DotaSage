@@ -16,7 +16,7 @@ Do not commit `.env`, `.env.*`, `.vercel/`, install logs, local profile exports,
 - `api/` — server-side API boundaries
 - `companion/` — localhost Dota GSI bridge and GSI config
 - `scripts/windows/` — all Windows BAT helpers
-- `docs/` — setup, data-source, privacy/legal docs, and historical changelogs
+- `docs/` — setup, data-source, privacy/legal docs, roadmap, and historical changelogs
 - `public/` — static browser assets such as the favicon
 
 Project-level `README.md`, `SECURITY.md`, `CONTRIBUTING.md`, and `LICENSE` stay at the root so GitHub surfaces them normally.
@@ -54,9 +54,11 @@ Steam sign-in is intentionally optional/future work for cross-device identity ra
 - DotaSage-only branding and browser metadata
 - GitHub → Vercel automatic production deploys
 - repository cleanup: docs/changelogs grouped, BAT helpers grouped, stale legacy prototype removed
+- clearer draft-action hierarchy with larger Radiant/Dire targets
+- dedicated project contact email
 - CI build + branding guard
 
-The v0.16 implementation notes are under `docs/changelog/v0.16.md`.
+The v0.16 implementation notes are under `docs/changelog/v0.16.md`. The active unfinished-work list is `docs/roadmap.md`.
 
 ## Important data labels
 
@@ -89,6 +91,12 @@ The production website and optional loopback GSI bridge are separate pieces by d
 DotaSage's original code is released under the MIT License. Valve/Dota 2 assets, marks, names, and other third-party material are **not** covered by that license. See `LICENSE` and `docs/third-party-notices.md`.
 
 The public project is intended to remain free and non-commercial unless separate rights are obtained or a future implementation removes/replaces content whose commercial use is restricted.
+
+## Contact
+
+- Project email: `dotasage.contact@gmail.com`
+- Bugs / feature requests: GitHub Issues
+- Security reports: email `dotasage.contact@gmail.com` with `SECURITY` in the subject instead of posting exploit details publicly.
 
 ## Legal / attribution
 
