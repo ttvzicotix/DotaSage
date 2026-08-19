@@ -65,3 +65,14 @@ export function forgetPlayerSnapshot(accountId) {
     window.localStorage.setItem(INDEX_KEY, JSON.stringify(next));
   } catch {}
 }
+
+export function forgetAllPlayerSnapshots() {
+  if (typeof window === 'undefined') return;
+  try {
+    for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+      const key = window.localStorage.key(index);
+      if (key?.startsWith(SNAPSHOT_PREFIX)) window.localStorage.removeItem(key);
+    }
+    window.localStorage.removeItem(INDEX_KEY);
+  } catch {}
+}
