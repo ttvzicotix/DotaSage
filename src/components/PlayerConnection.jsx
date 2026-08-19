@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fetchLocalGameState } from '../services/localGsi';
-import { listRememberedPlayers } from '../services/playerStorage';
+import { forgetAllPlayerSnapshots, listRememberedPlayers } from '../services/playerStorage';
 
 export default function PlayerConnection({ accountId, source, onConnect, onForget }) {
   const [value, setValue] = useState(accountId || '');
@@ -50,6 +50,12 @@ export default function PlayerConnection({ accountId, source, onConnect, onForge
     setStatus('Player connected on this device.');
   }
 
+  function clearRemembered() {
+    forgetAllPlayerSnapshots();
+    setRemembered([]);
+    setStatus('Remembered player summaries cleared from this browser. The active Dota ID stays connected until you press Forget.');
+  }
+
   return <section id="player-connection" className="player-connect glass-panel">
     <div className="player-topline"><span>PLAYER CONNECTION</span><i /></div>
     {accountId ? <div className="player-connect-active">
@@ -65,11 +71,12 @@ export default function PlayerConnection({ accountId, source, onConnect, onForge
       <small className="player-connect-help">{status || 'Your Dota ID is stored only in this browser. Live detection only contacts 127.0.0.1 after you ask it to.'}</small>
     </>}
     {otherRemembered.length > 0 && <div className="remembered-players">
-      <small>REMEMBERED ON THIS DEVICE</small>
+      <div className="remembered-head"><small>REMEMBERED ON THIS DEVICE</small><button onClick={clearRemembered}>CLEAR REMEMBERED</button></div>
       <div>{otherRemembered.map(row => <button key={row.accountId} onClick={() => onConnect?.(row.accountId, 'saved')} title={`Switch to ${row.name || row.accountId}`}>
         {row.avatar ? <img src={row.avatar} alt="" /> : <span className="remembered-avatar">P</span>}
         <span><b>{row.name || `Dota ${row.accountId}`}</b><small>ID {row.accountId}</small></span>
       </button>)}</div>
     </div>}
+    {accountId && status && <small className="player-connect-help">{status}</small>}
   </section>;
 }
