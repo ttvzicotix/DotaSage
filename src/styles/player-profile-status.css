@@ -1,0 +1,42 @@
+.player-data-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: -2px 0 2px;
+}
+
+.player-data-status > span {
+  min-width: 0;
+  font: 800 10px/1.2 'Barlow Condensed', sans-serif;
+  letter-spacing: .08em;
+}
+
+.player-data-status > span.fresh { color: var(--green); }
+.player-data-status > span.saved { color: #f0c67a; }
+.player-data-status > span.limited { color: #ffb36b; }
+
+.player-data-status button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: rgba(255,255,255,.035);
+  color: var(--muted);
+  font: 800 10px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: .06em;
+  cursor: pointer;
+}
+
+.player-data-status button:hover { color: var(--text); border-color: rgba(103,185,255,.45); }
+
+.profile-availability-note {
+  padding: 9px 10px;
+  border: 1px solid rgba(255,179,107,.25);
+  border-radius: 7px;
+  background: rgba(255,179,107,.055);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
