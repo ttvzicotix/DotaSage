@@ -15,11 +15,18 @@ This roadmap distinguishes shipped work from work that is only partially validat
 - Game Plan match clock, phase/objective/vision coaching, item planning, observed enemy-item reactions, and visible post-match review.
 - Optional localhost GSI bridge for own hero, level, K/D/A, clock, inventory, neutral item, and diagnostics.
 - Manual player connection through a browser-local Dota account ID.
+- Browser-local player snapshots and a remembered-player switcher so previously loaded public player summaries survive revisits on the same device.
+- Explicit OpenDota refresh controls and saved-data age/source labels.
+- A global Live Sync identity guard that warns when the locally detected Dota player differs from the active profile and can switch to the live player explicitly.
+- Local privacy controls to forget the active profile or clear remembered player summaries.
 
 ## Implemented, needs live validation
 
 ### Local player auto-detection
 The local companion now attempts to derive the public Dota account ID from Valve's current local player payload and the site exposes **DETECT FROM LIVE SYNC**. Validate this in Demo Hero and a real match on multiple machines/contexts. Manual Dota ID is the required fallback when identity is absent from the payload.
+
+### Player-data availability states
+DotaSage now distinguishes saved local summaries from current OpenDota data and explicitly labels the common case where a profile is identified but no public match-history rows are returned. Further work should distinguish every upstream failure mode (private/unavailable, not indexed, transient API failure, and an actual empty result) without pretending one is another.
 
 ### CI verification
 A GitHub workflow now builds the Vite app and guards against reintroducing the old product name. Confirm Actions execute normally on future pushes/PRs and tighten checks as tests are added.
