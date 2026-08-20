@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ScorePill from './ScorePill';
+import MatchupAtlas from './MatchupAtlas';
 import { CURRENT_PATCH } from '../data/currentPatch';
 import { fetchRecentMatches, fetchMatch, itemImageUrl } from '../services/openDota';
 import { DEFAULT_PROFILE } from '../data/defaultProfile';
@@ -571,6 +572,7 @@ export default function GamePlan({
       <section className="gpv2-card"><span>NEXT CONVERSION</span><strong>Turn the next win into something permanent</strong><p>{objectiveCall(minute, matchState, converter)}</p></section>
     </div>
 
+    <MatchupAtlas hero={hero} enemies={draft.enemies || []} />
     <ObservedItems items={allItems} counts={observedCounts} onChange={changeObserved} />
     <ItemLab phases={phases} targets={targets} paths={paths} conditionals={conditionals} impacts={impacts} loading={itemLoading} />
     <CompactPostMatch hero={hero} />
