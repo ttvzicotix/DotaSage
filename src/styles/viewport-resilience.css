@@ -1,0 +1,213 @@
+/* v0.18 viewport resilience -------------------------------------------------
+   DotaSage must remain usable when snapped to half-screen, quarter-screen,
+   or a short desktop window. Reflow instead of shrinking the desktop grid
+   into unreadable columns. Imported last so these rules intentionally win. */
+
+@media (max-width: 1000px), (max-height: 650px) and (max-width: 1400px) {
+  html, body, #root { min-width: 0; min-height: 100%; }
+  body { overflow: auto !important; }
+  .app-shell { height: auto !important; min-height: 100vh !important; overflow: visible !important; }
+
+  .topbar {
+    position: sticky !important;
+    top: 0;
+    height: auto !important;
+    min-height: 56px !important;
+    padding: 7px 9px !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+  }
+  .brand-mark { min-width: 0 !important; flex: 0 1 auto; }
+  .brand-mark strong { font-size: 19px !important; }
+  .brand-mark small, .brand-note, .date-badge, .verified-badge { display: none !important; }
+  .topbar-status { width: auto !important; margin-left: auto !important; flex-wrap: wrap; }
+  .patch-badge, .unofficial-badge { font-size: 8px !important; padding: 5px 7px !important; }
+
+  .command-layout {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding: 7px !important;
+  }
+  .left-rail {
+    display: grid !important;
+    grid-template-columns: minmax(220px, .8fr) minmax(300px, 1.2fr) !important;
+    grid-template-rows: auto auto !important;
+    gap: 7px !important;
+    overflow: visible !important;
+    margin-bottom: 7px;
+  }
+  .left-rail > .player-connect,
+  .left-rail > .player-card { min-width: 0; min-height: 0 !important; }
+  .left-rail > .draft-board {
+    grid-column: 1 / -1;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .player-connect { padding: 8px !important; }
+  .player-card { overflow: visible !important; }
+  .avatar-wrap { width: 44px !important; height: 44px !important; }
+  .player-name { font-size: 16px !important; }
+  .profile-metrics { display: grid !important; }
+  .recent-line { display: flex !important; }
+  .remembered-players > div { max-height: 82px !important; }
+
+  .center-stage,
+  .draft-insights {
+    display: block !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin-bottom: 7px;
+  }
+  .hero-browser,
+  .recommend-panel,
+  .advisor-panel,
+  .draft-insights { margin-bottom: 7px !important; }
+  .draft-insights { min-height: 300px !important; }
+  .advisor-results { display: block !important; overflow: visible !important; }
+  .compact-pick-list { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; margin-top: 6px !important; }
+  .recommend-foot { display: block !important; }
+
+  .roster-screen { position: fixed !important; inset: 56px 4px 4px !important; }
+  .roster-screen-inner { height: 100%; min-height: 0; overflow: auto !important; }
+  .roster-screen-tools { grid-template-columns: 1fr !important; gap: 7px !important; }
+  .roster-position-pills,
+  .roster-scope-controls { justify-self: start !important; }
+  .roster-full-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; }
+
+  /* Compact viewports should be readable, not merely technically visible. */
+  .command-layout input { font-size: 12px !important; min-height: 34px; }
+  .command-layout button { min-height: 28px; }
+  .command-layout .eyebrow,
+  .command-layout small,
+  .command-layout .draft-context,
+  .command-layout .quick-shelf-label small,
+  .command-layout .compact-name small,
+  .command-layout .recommend-foot,
+  .command-layout .profile-bar-title,
+  .command-layout .curve-legend { font-size: 8px !important; line-height: 1.3 !important; }
+
+  /* Game Plan: one-column briefing when the window is constrained. */
+  .gameplan-shell .game-plan,
+  .gpv2 { height: auto !important; min-height: calc(100vh - 56px) !important; overflow: visible !important; }
+  .gpv2 { padding: 8px 8px 36px !important; }
+  .gpv2-toolbar { grid-template-columns: 1fr 1fr !important; }
+  .gpv2-toolbar > span { display: none !important; }
+  .gpv2-toolbar button { min-height: 32px; font-size: 9px !important; }
+  .gpv2-hero-brief { grid-template-columns: 120px minmax(0, 1fr) !important; min-height: 100px !important; }
+  .gpv2-hero-brief > img { width: 120px !important; height: 100px !important; }
+  .gpv2-hero-copy { margin-left: -10px !important; }
+  .gpv2-hero-copy h1 { font-size: 29px !important; }
+  .gpv2-hero-copy p { font-size: 10px !important; }
+  .gpv2-scores { grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; padding: 7px !important; border-top: 1px solid var(--line); }
+
+  .gpv2-lineups { grid-template-columns: 1fr !important; }
+  .gpv2-lineups > div + div { border-left: 0 !important; border-top: 1px solid var(--line); }
+  .gpv2-lineups small { font-size: 8px !important; }
+  .gpv2-lineups b { font-size: 10px !important; }
+
+  .gpv2-match-context { grid-template-columns: minmax(0, 1fr) auto !important; }
+  .gpv2-match-context > input,
+  .gpv2-state-buttons { grid-column: 1 / -1; }
+  .gpv2-minute button,
+  .gpv2-state-buttons button,
+  .gpv2-card-head button { min-height: 30px; font-size: 9px !important; }
+  .gpv2-livebar { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .gpv2-live-items { grid-column: 1 / -1; }
+  .gpv2-live-gate { grid-template-columns: 1fr auto !important; }
+
+  .gpv2-command { grid-template-columns: 1fr !important; }
+  .gpv2-intel-rail { position: static !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .gpv2-brief-grid,
+  .gpv2-map-info { grid-template-columns: 1fr !important; }
+  .gpv2-coach-list { grid-template-columns: 1fr !important; }
+  .gpv2-item-main,
+  .gpv2-item-responses { grid-template-columns: 1fr !important; }
+  .gpv2-target-stack,
+  .gpv2-item-responses aside { border-left: 0 !important; border-top: 1px solid var(--line); padding: 8px 0 0 !important; }
+  .gpv2-paths > div { grid-template-columns: 1fr !important; }
+
+  .gpv2 .gpv2-card-head span,
+  .gpv2 .gpv2-side-title span,
+  .gpv2 .gpv2-map-info section > span,
+  .gpv2 .gpv2-brief-grid span,
+  .gpv2 .gpv2-match-context span,
+  .gpv2 .gpv2-livebar span,
+  .gpv2 .gpv2-live-gate span { font-size: 8px !important; }
+  .gpv2 .gpv2-card-head strong,
+  .gpv2 .gpv2-side-title strong { font-size: 16px !important; }
+  .gpv2 .gpv2-brief-grid p,
+  .gpv2 .gpv2-coach-list p,
+  .gpv2 .gpv2-checkpoints p,
+  .gpv2 .gpv2-map-info p,
+  .gpv2 .gpv2-post p,
+  .gpv2 .gpv2-side-card > p { font-size: 9px !important; line-height: 1.5 !important; }
+  .gpv2 .gpv2-matchup-row span small,
+  .gpv2 .gpv2-fight span small,
+  .gpv2 .gpv2-lane-hero small,
+  .gpv2 .gpv2-phase small,
+  .gpv2 .gpv2-item-responses article span small { font-size: 7px !important; }
+  .gpv2-observed > input { min-height: 36px; font-size: 11px !important; }
+  .gpv2-observed-options button { min-height: 36px; }
+}
+
+@media (max-width: 620px) {
+  .topbar-status { width: 100% !important; margin-left: 0 !important; }
+  .command-layout { padding: 5px !important; }
+  .left-rail { grid-template-columns: 1fr !important; grid-template-rows: auto auto auto !important; }
+  .left-rail > .draft-board { grid-column: auto; }
+  .remembered-players > div { max-height: 110px !important; }
+  .compact-pick-list { grid-template-columns: 1fr !important; }
+  .roster-full-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .roster-screen { inset: 88px 3px 3px !important; }
+  .quick-hero-scroll { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+  .gpv2 { padding-left: 5px !important; padding-right: 5px !important; }
+  .gpv2-intel-rail { grid-template-columns: 1fr !important; }
+  .gpv2-lineups > div > div { grid-template-columns: repeat(5, 82px) !important; overflow-x: auto; padding-bottom: 3px; }
+  .gpv2-scores { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .gpv2-live-gate { grid-template-columns: 1fr !important; }
+  .gpv2-live-gate button { width: 100%; min-height: 34px; }
+  .gpv2-item-responses > div { grid-template-columns: 1fr !important; }
+  .gpv2-observed-active > div { min-width: min(100%, 250px); }
+}
+
+@media (max-width: 520px) {
+  .roster-full-grid { grid-template-columns: 1fr !important; }
+  .gpv2-toolbar { grid-template-columns: 1fr !important; }
+  .gpv2-toolbar button,
+  .gpv2-toolbar button:last-child { width: 100% !important; justify-self: stretch !important; }
+  .gpv2-hero-brief { grid-template-columns: 92px minmax(0, 1fr) !important; }
+  .gpv2-hero-brief > img { width: 92px !important; }
+  .gpv2-hero-copy h1 { font-size: 25px !important; }
+  .gpv2-livebar { grid-template-columns: 1fr !important; }
+  .gpv2-live-items { grid-column: auto; }
+
+  /* Lanes become a readable vertical sequence instead of two crushed sides. */
+  .gpv2-lane-board { display: block !important; }
+  .gpv2-lane-label { display: none !important; }
+  .gpv2-lane-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 4px !important;
+    min-height: 0 !important;
+    padding: 7px 0;
+    border-top: 1px solid var(--line);
+  }
+  .gpv2-lane-name {
+    order: -1;
+    justify-items: start !important;
+    border: 0 !important;
+    padding: 0 0 2px;
+    font-size: 9px !important;
+  }
+  .gpv2-lane-side,
+  .gpv2-lane-side.dire { justify-content: flex-start !important; flex-wrap: wrap; }
+  .gpv2-lane-hero { max-width: 100% !important; grid-template-columns: 34px minmax(0, 1fr) !important; }
+  .gpv2-lane-hero img { width: 34px !important; height: 23px !important; }
+  .gpv2-lane-hero small { display: block !important; }
+}
