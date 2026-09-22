@@ -21,6 +21,7 @@ import useCurrentPatch from './hooks/useCurrentPatch';
 import { fetchProviderStatus } from './services/providerStatus';
 import DraftFlowBar from './components/DraftFlowBar';
 import { decodeDraftState, draftPayload, encodeDraftState } from './utils/draftShare';
+import { fetchRoleMeta } from './services/roleMeta';
 
 const emptyDraft = () => ({ allies: [], enemies: [], bans: [], self: null });
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -31,6 +32,15 @@ function metaScoreFromStat(stat) {
   const picks = Number(stat?.pub_pick || 0);
   const sampleLift = Math.min(1, Math.log10(Math.max(10, picks)) / 5);
   return clamp(5 + (wr - 0.5) * 90 * (0.65 + sampleLift * 0.35), 0, 10);
+}
+
+function metaScoreFromRole(row, fallbackStat) {
+  const games = Number(row?.games || 0);
+  const wins = Number(row?.wins || 0);
+  if (!games || !Number.isFinite(wins)) return metaScoreFromStat(fallbackStat);
+  const wr = wins / games;
+  const sampleLift = Math.min(1, Math.log10(Math.max(10, games)) / 4);
+  return clamp(5 + (wr - 0.5) * 90 * (0.7 + sampleLift * 0.3), 0, 10);
 }
 
 function matchesLane(hero, lane) {
@@ -128,6 +138,7 @@ export default function App() {
   const [onlineLiveStatus, setOnlineLiveStatus] = useState({ searching: false, found: false, provider: null, scannedGames: 0, matchId: null, error: null });
   const [onlineLiveMatch, setOnlineLiveMatch] = useState(null);
   const [providerStatus, setProviderStatus] = useState(null);
+  const [roleMeta, setRoleMeta] = useState({ provider: null, position: null, rows: [] });
   const [copyDraftStatus, setCopyDraftStatus] = useState('');
   const [draftSessionHydrated, setDraftSessionHydrated] = useState(false);
   const lastAutoPlanSignatureRef = useRef('');
@@ -135,6 +146,7 @@ export default function App() {
 
   const statById = useMemo(() => new Map(heroStats.map(s => [Number(s.id), s])), [heroStats]);
   const heroById = useMemo(() => new Map(heroes.map(hero => [Number(hero.id), hero])), [heroes]);
+  const roleMetaById = useMemo(() => new Map((roleMeta?.rows || []).map(row => [Number(row.hero_id), row])), [roleMeta]);
 
   useEffect(() => {
     if (draftSessionHydrated || !heroes.length) return;
@@ -183,6 +195,14 @@ export default function App() {
       })));
     } catch {}
   }, [draft, playerSide, laneFilter, advisorMode, draftSessionHydrated]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchRoleMeta(laneFilter).then(value => {
+      if (!cancelled) setRoleMeta(value || { provider: null, position: null, rows: [] });
+    });
+    return () => { cancelled = true; };
+  }, [laneFilter, patch.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -525,7 +545,11 @@ export default function App() {
       const synergyCoverage = teammates.length ? empiricalSynergyPairs.length / teammates.length : 0;
       const synergyProviders = [...new Set(empiricalSynergyPairs.map(row => row.provider).filter(Boolean))];
       const teamFit = compositionFit(hero, teammates);
-      const metaScore = metaScoreFromStat(statById.get(Number(hero.id)));
+      const roleMetaRow = roleMetaById.get(Number(hero.id));
+      const metaScore = metaScoreFromRole(roleMetaRow, statById.get(Number(hero.id)));
+      const metaProvider = roleMetaRow?._provider || 'OpenDota';
+      const metaGames = Number(roleMetaRow?.games || 0);
+      const metaPosition = roleMetaRow?._position || null;
       const draftFit = draftFitScore({ enemyScore, synergyScore, teamFit, metaScore });
       const overall = overallRecommendation({ enemyScore, synergyScore, teamFit, personalFit: personal.score, metaScore });
       scores.set(hero.id, {
@@ -539,6 +563,9 @@ export default function App() {
         teamFit,
         personalFit: personal.score,
         metaScore,
+        metaProvider,
+        metaGames,
+        metaPosition,
         draftFit,
         overall,
         personal,
@@ -546,7 +573,7 @@ export default function App() {
       pairBreakdowns.set(hero.id, pairScores);
     }
     return { scores, pairBreakdowns };
-  }, [heroes, draft.allies, draft.enemies, enemyMatrix, allySynergyMatrix, personalForHero, statById]);
+  }, [heroes, draft.allies, draft.enemies, enemyMatrix, allySynergyMatrix, personalForHero, statById, roleMetaById]);
 
   const usedIds = useMemo(() => new Set([...draft.allies.map(h => h.id), ...draft.enemies.map(h => h.id), ...draft.bans.map(h => h.id)]), [draft]);
   const roleEligibleHeroes = useMemo(() => heroes.filter(hero => matchesLane(hero, laneFilter)), [heroes, laneFilter]);
