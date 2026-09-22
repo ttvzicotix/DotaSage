@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node scripts/test-item-constants.mjs && node scripts/test-scoring.mjs && node scripts/test-draft-share.mjs && node --check companion/dotasage-gsi.js && node --check api/patch.js && node --check api/player.js && node --check api/live.js && node --check api/search.js && node --check api/matchups.js && node --check api/status.js",
+    "test": "node scripts/test-item-constants.mjs && node scripts/test-scoring.mjs && node scripts/test-draft-share.mjs && node --check companion/dotasage-gsi.js && node --check api/patch.js && node --check api/player.js && node --check api/live.js && node --check api/search.js && node --check api/matchups.js && node --check api/status.js && node --check api/meta.js",
     "preview": "vite preview"
   },
   "dependencies": {
