@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fetchLocalGameState } from '../services/localGsi';
 import { forgetAllPlayerSnapshots, listRememberedPlayers } from '../services/playerStorage';
+import { dotaIdInputKind, normalizeDotaAccountId } from '../utils/dotaAccountId';
 
 export default function PlayerConnection({ accountId, source, onConnect, onForget }) {
   const [value, setValue] = useState(accountId || '');
@@ -20,17 +21,17 @@ export default function PlayerConnection({ accountId, source, onConnect, onForge
     if (!silent) setStatus('Checking the local DotaSage bridge…');
     setDetecting(true);
     const state = await fetchLocalGameState();
-    const detected = state?.player?.account_id;
+    const detected = normalizeDotaAccountId(state?.player?.account_id);
     setDetecting(false);
-    if (detected && onConnect?.(String(detected), 'live')) {
-      setValue(String(detected));
+    if (detected && onConnect?.(detected, 'live')) {
+      setValue(detected);
       setStatus('Detected from your local Dota session.');
       return;
     }
     if (!silent) {
       setStatus(state?.bridge
-        ? 'Bridge found, but no player ID is in the current Dota payload yet. Enter Demo Hero or a match, then retry.'
-        : 'Local bridge not found. Start it first, or paste your Dota ID below.');
+        ? 'Bridge found, but no usable player ID is in the current Dota payload yet. Enter Demo Hero or a match, then retry.'
+        : 'Local bridge not found. Start it first, or paste your Dota ID / SteamID64 below.');
     }
   }
 
@@ -43,11 +44,16 @@ export default function PlayerConnection({ accountId, source, onConnect, onForge
 
   function submit(event) {
     event.preventDefault();
-    if (!onConnect?.(value, 'manual')) {
-      setStatus('Enter the numeric Dota account ID from your OpenDota or Dotabuff profile URL.');
+    const normalized = normalizeDotaAccountId(value);
+    if (!normalized || !onConnect?.(normalized, 'manual')) {
+      setStatus('Enter a Dota account/friend ID or a 17-digit SteamID64.');
       return;
     }
-    setStatus('Player connected on this device.');
+    const kind = dotaIdInputKind(value);
+    setValue(normalized);
+    setStatus(kind === 'steamid64'
+      ? `SteamID64 converted to Dota account ID ${normalized}. Connecting…`
+      : 'Player connected on this device.');
   }
 
   function clearRemembered() {
@@ -62,13 +68,13 @@ export default function PlayerConnection({ accountId, source, onConnect, onForge
       <div><small>CONNECTED DOTA ID</small><strong>{accountId}</strong><span>{source === 'live' ? 'detected from local Live Sync' : source === 'manual' ? 'entered manually' : 'saved on this device'}</span></div>
       <button className="ghost-button" onClick={onForget}>FORGET</button>
     </div> : <>
-      <p>No DotaSage account required. Connect your public Dota profile once for personal history and FOR YOU scoring.</p>
+      <p>No DotaSage account required. Paste either your Dota account/friend ID or your 17-digit SteamID64.</p>
       <form className="player-connect-form" onSubmit={submit}>
-        <input inputMode="numeric" pattern="[0-9]*" value={value} onChange={event => setValue(event.target.value.replace(/\D/g, ''))} placeholder="Dota ID" aria-label="Dota account ID" />
+        <input inputMode="numeric" pattern="[0-9]*" value={value} onChange={event => setValue(event.target.value.replace(/\D/g, ''))} placeholder="Dota ID or SteamID64" aria-label="Dota account ID or SteamID64" />
         <button className="primary-button" type="submit">CONNECT</button>
       </form>
       <button className="player-detect-button" onClick={() => detect(false)} disabled={detecting}>{detecting ? 'CHECKING LIVE SYNC…' : 'DETECT FROM LIVE SYNC'}</button>
-      <small className="player-connect-help">{status || 'Your Dota ID is stored only in this browser. Live detection only contacts 127.0.0.1 after you ask it to.'}</small>
+      <small className="player-connect-help">{status || 'No OpenDota login is required. Match history can only be returned when Dota exposes it publicly.'}</small>
     </>}
     {otherRemembered.length > 0 && <div className="remembered-players">
       <div className="remembered-head"><small>REMEMBERED ON THIS DEVICE</small><button onClick={clearRemembered}>CLEAR REMEMBERED</button></div>
