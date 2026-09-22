@@ -56,6 +56,61 @@ function dotaAccountId(player) {
   } catch {}
   return null;
 }
+function numericHeroId(value) {
+  const id = Number(value?.id ?? value?.hero_id ?? value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function draftSeries(team, kind) {
+  if (!team || typeof team !== 'object') return [];
+  const rows = [];
+  for (const [key, value] of Object.entries(team)) {
+    if (!key.startsWith(kind) || !key.endsWith('_id')) continue;
+    const slotText = key.slice(kind.length, -3);
+    if (!/^\d+$/.test(slotText)) continue;
+    const id = numericHeroId(value);
+    if (id) rows.push({ slot: Number(slotText), id });
+  }
+
+  const plural = team[kind + 's'];
+  if (Array.isArray(plural)) {
+    plural.forEach((value, index) => {
+      const id = numericHeroId(value);
+      if (id) rows.push({ slot: index, id });
+    });
+  } else if (plural && typeof plural === 'object') {
+    Object.entries(plural).forEach(([key, value], index) => {
+      const id = numericHeroId(value);
+      if (!id) return;
+      const digits = String(key).replace(/\D/g, '');
+      const parsed = digits ? Number(digits) : index;
+      rows.push({ slot: parsed, id });
+    });
+  }
+
+  return rows
+    .sort((a, b) => a.slot - b.slot)
+    .filter((row, index, all) => all.findIndex(candidate => candidate.id === row.id) === index)
+    .map(row => row.id);
+}
+
+function sanitizeDraft(payload) {
+  const draft = payload?.draft;
+  if (!draft || typeof draft !== 'object') return null;
+  const radiant = draft.team2 || draft.radiant || {};
+  const dire = draft.team3 || draft.dire || {};
+  const normalized = {
+    active_team: draft.activeteam ?? draft.active_team ?? null,
+    is_pick: draft.pick ?? draft.is_pick ?? null,
+    active_team_time_remaining: draft.activeteam_time_remaining ?? draft.active_team_time_remaining ?? null,
+    radiant_bonus_time: draft.radiant_bonus_time ?? null,
+    dire_bonus_time: draft.dire_bonus_time ?? null,
+    radiant: { picks: draftSeries(radiant, 'pick'), bans: draftSeries(radiant, 'ban') },
+    dire: { picks: draftSeries(dire, 'pick'), bans: draftSeries(dire, 'ban') },
+  };
+  const total = normalized.radiant.picks.length + normalized.dire.picks.length + normalized.radiant.bans.length + normalized.dire.bans.length;
+  return total || normalized.active_team != null ? normalized : null;
+}
 
 function gameStateInfo(rawState) {
   const raw = String(rawState || '');
@@ -101,6 +156,7 @@ function sanitize(payload) {
       roshan_state: map.roshan_state ?? null,
     },
     hero: hero ? {
+      id: hero.id ?? null,
       name: hero.name ?? null,
       level: hero.level ?? null,
       health: hero.health ?? null,
@@ -121,9 +177,11 @@ function sanitize(payload) {
       xpm: stat(player.xpm),
       net_worth: stat(player.net_worth),
       team_name: player.team_name ?? null,
+      team: player.team ?? player.team_number ?? null,
       activity: player.activity ?? null,
     } : null,
     items: ownItems(payload),
+    draft: sanitizeDraft(payload),
   };
 }
 

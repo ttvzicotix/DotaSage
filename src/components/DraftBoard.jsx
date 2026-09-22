@@ -24,19 +24,33 @@ function TeamBlock({ label, type, heroes, count, onRemove }) {
   );
 }
 
-export default function DraftBoard({ draft, onRemove, onClear, onOpenGamePlan, playerSide = 'radiant', onSideChange, onSwapTeams }) {
+export default function DraftBoard({ draft, onRemove, onClear, onOpenGamePlan, playerSide = 'radiant', onSideChange, onSwapTeams, liveDraftEnabled = false, liveDraftStatus = {}, onToggleLiveDraft }) {
   const complete = draft.allies.length === 5 && draft.enemies.length === 5;
   return (
     <section className="draft-board glass-panel v06-draft-board">
       <div className="panel-head compact-head">
         <div><div className="eyebrow">LIVE DRAFT</div><h2>Lineups</h2></div>
-        <div className="draft-head-actions"><button className="ghost-button" onClick={onSwapTeams} title="Swap your team and enemy team">⇄ Swap</button><button className="ghost-button" onClick={onClear}>Reset</button></div>
+        <div className="draft-head-actions">
+          <button className={`live-draft-toggle ${liveDraftEnabled ? liveDraftStatus.active ? 'active' : 'enabled' : ''}`} onClick={onToggleLiveDraft} title="Use the optional local Dota GSI companion to sync picks and bans">
+            <i /> {liveDraftEnabled ? liveDraftStatus.active ? 'AUTO LIVE' : liveDraftStatus.bridge ? 'AUTO READY' : 'AUTO WAIT' : 'AUTO DRAFT'}
+          </button>
+          <button className="ghost-button" onClick={onSwapTeams} title="Swap your team and enemy team">⇄ Swap</button>
+          <button className="ghost-button" onClick={onClear}>Reset</button>
+        </div>
       </div>
       <div className="side-selector" aria-label="Choose your map side">
         <span>YOUR SIDE</span>
         <button className={playerSide === 'radiant' ? 'radiant active' : 'radiant'} onClick={() => onSideChange('radiant')}><i /> RADIANT</button>
         <button className={playerSide === 'dire' ? 'dire active' : 'dire'} onClick={() => onSideChange('dire')}><i /> DIRE</button>
       </div>
+      {liveDraftEnabled && <div className={`local-draft-status ${liveDraftStatus.active ? 'active' : liveDraftStatus.bridge ? 'ready' : 'waiting'}`}>
+        <i />
+        <span>{liveDraftStatus.active
+          ? `Local draft detected${liveDraftStatus.gameState ? ` · ${liveDraftStatus.gameState}` : ''} · picks/bans sync automatically`
+          : liveDraftStatus.bridge
+            ? 'Local bridge connected · waiting for Dota draft data'
+            : 'Waiting for the DotaSage local bridge on 127.0.0.1'}</span>
+      </div>}
       <div className="team-columns map-side-columns">
         {playerSide === 'radiant' ? <>
           <TeamBlock label="RADIANT · YOUR TEAM" type="ally" heroes={draft.allies} count={5} onRemove={onRemove} />

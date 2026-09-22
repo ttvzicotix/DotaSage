@@ -1,4 +1,4 @@
-import { FALLBACK_HEROES } from '../data/fallbackHeroes';
+import { FALLBACK_HEROES } from '../data/fallbackHeroes.js';
 
 const BASE = 'https://api.opendota.com/api';
 const matchupCache = new Map();

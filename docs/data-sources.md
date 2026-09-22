@@ -49,3 +49,21 @@ The strategy, item, and skill strings embedded in `legacy/dota2-draft-analyzer.h
 ## Staleness rule
 
 If a patch-sensitive source cannot establish freshness, DotaSage should show the value as unavailable/fallback/heuristic rather than invent a current statistic.
+
+
+## Provider resilience plan
+
+OpenDota remains useful, but it should not be a single point of failure.
+
+Recommended provider roles:
+
+- **STRATZ GraphQL:** preferred secondary/advanced analytics provider for current hero positions, public player history, item/build analysis, lane outcomes, synergies and counters. Requires a STRATZ API token and should be called server-side so the token never reaches the browser.
+- **Valve Steam Web API:** official fallback for basic public match history and match details. It requires a Steam Web API key. Player-specific match history still fails when the player hides match history, so it is an availability fallback rather than a privacy bypass.
+- **OpenDota:** community provider for public player history, matchup tables, hero stats, constants and replay-derived detail where available.
+- **Local Dota GSI companion:** first choice for the user's current local draft/game state. This avoids remote API latency and does not require historical player data. When Valve exposes the `draft` section, DotaSage can ingest Radiant/Dire picks and bans directly.
+
+A future provider adapter should return both the value and provenance (provider, timestamp/freshness, sample size where relevant), then fall through providers by capability rather than pretending every provider exposes equivalent data.
+
+## Privacy limitation
+
+No remote provider can reliably reconstruct a player's hidden personal match history when Valve does not expose that account in public match data. Switching from OpenDota to STRATZ or the Steam Web API can improve uptime and analytics coverage, but it does not override the player's Dota privacy setting.
