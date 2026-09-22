@@ -243,7 +243,30 @@ export async function fetchHeroStats() {
 
 export async function fetchHeroMatchups(heroId) {
   if (matchupCache.has(heroId)) return matchupCache.get(heroId);
-  const data = await getJson(`/heroes/${heroId}/matchups`, { ttlMs: 6 * 60 * 60 * 1000, cacheKey: `matchups:${heroId}` });
+  const cacheKey = `matchups:${heroId}`;
+  const cached = cacheRead(cacheKey, 6 * 60 * 60 * 1000);
+  if (cached != null) {
+    matchupCache.set(heroId, cached);
+    return cached;
+  }
+
+  try {
+    const response = await fetch(`/api/matchups?heroId=${encodeURIComponent(heroId)}`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) throw new Error(`Matchup router ${response.status}`);
+    const payload = await response.json();
+    const rows = Array.isArray(payload?.rows) ? payload.rows.map(row => ({ ...row, _provider: row._provider || payload.provider || null })) : [];
+    if (rows.length) {
+      cacheWrite(cacheKey, rows);
+      matchupCache.set(heroId, rows);
+      return rows;
+    }
+  } catch (error) {
+    console.warn('DotaSage matchup provider router unavailable; using direct OpenDota fallback.', error);
+  }
+
+  const data = await getJson(`/heroes/${heroId}/matchups`, { ttlMs: 6 * 60 * 60 * 1000, cacheKey });
   matchupCache.set(heroId, data);
   return data;
 }
