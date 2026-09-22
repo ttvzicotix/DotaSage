@@ -2,3 +2,12 @@
 @media(max-width:1280px),(max-height:720px) and (max-width:1500px){.gpv2-atlas{padding:9px}.gpv2-atlas-controls input{min-height:36px;font-size:11px}.gpv2-atlas-controls button{min-height:34px;font-size:9px}.gpv2-atlas-legend,.gpv2-atlas-foot,.gpv2-atlas-status{font-size:8px}.gpv2-atlas-grid{grid-template-columns:repeat(auto-fill,minmax(165px,1fr));max-height:52vh}.gpv2-atlas-grid article{grid-template-columns:48px minmax(0,1fr) auto;padding:5px}.gpv2-atlas-grid img{width:48px;height:32px}.gpv2-atlas-copy b{font-size:9px}.gpv2-atlas-copy em{font-size:6px}.gpv2-atlas-copy small{font-size:7px}.gpv2-atlas-numbers strong{font-size:11px}.gpv2-atlas-numbers span{font-size:8px}}
 @media(max-width:620px){.gpv2-atlas-controls{grid-template-columns:1fr}.gpv2-atlas-controls>div{display:grid;grid-template-columns:repeat(3,1fr)}.gpv2-atlas-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:56vh}}
 @media(max-width:430px){.gpv2-atlas-grid{grid-template-columns:1fr}.gpv2-atlas-grid article{grid-template-columns:54px minmax(0,1fr) auto}.gpv2-atlas-grid img{width:54px;height:36px}}
+.gpv2-atlas-controls.draft-only{align-items:center}
+.gpv2-atlas-scope{color:var(--dim);font-size:9px;line-height:1.35}
+.gpv2-atlas-legend .ally{color:#8fc7ff}
+.gpv2-atlas-grid article.ally{border-color:rgba(105,169,225,.32);box-shadow:inset 2px 0 rgba(105,169,225,.46)}
+.gpv2-atlas-grid article.ally .gpv2-atlas-copy em{color:#8fc7ff}
+.gpv2-atlas-grid article.enemy{border-color:rgba(225,90,93,.4);background:linear-gradient(120deg,rgba(145,40,48,.11),rgba(255,255,255,.012));box-shadow:inset 2px 0 rgba(225,90,93,.55)}
+.gpv2-atlas-grid article.enemy .gpv2-atlas-copy em{color:#e78d92}
+.gpv2-atlas-grid.draft-only-grid{max-height:none;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+@media(max-width:620px){.gpv2-atlas-scope{font-size:10px}.gpv2-atlas-grid.draft-only-grid{grid-template-columns:1fr}}
