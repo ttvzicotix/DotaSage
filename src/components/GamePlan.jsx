@@ -332,7 +332,7 @@ function visionCall(minute, state) {
   return `${phase}: ward the contested entrance around the next objective so the fight starts with information instead of a face-check.`;
 }
 
-function LiveBar({ itemConstants, onMinute, onConnectionChange }) {
+function LiveBar({ itemConstants, onMinute, onConnectionChange, onlineLiveMatch }) {
   const [enabled, setEnabled] = useState(() => {
     try { return sessionStorage.getItem('dotasage:live-sync-enabled') === '1'; } catch { return false; }
   });
@@ -365,7 +365,20 @@ function LiveBar({ itemConstants, onMinute, onConnectionChange }) {
     return () => { cancelled = true; window.clearInterval(timer); };
   }, [enabled]);
 
-  if (!enabled) return <section className="gpv2-live-gate gpv2-card"><div><span>LOCAL LIVE SYNC · OPTIONAL</span><strong>Use your own live clock, hero, K/D/A and inventory</strong></div><button onClick={() => { try { sessionStorage.setItem('dotasage:live-sync-enabled', '1'); } catch {} setEnabled(true); }}>CONNECT</button></section>;
+  if (onlineLiveMatch) {
+    const seconds = Number(onlineLiveMatch.gameTimeSeconds);
+    const clockText = Number.isFinite(seconds) && seconds >= 0
+      ? `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
+      : '—';
+    return <section className="gpv2-livebar gpv2-card connected online-provider">
+      <div className="gpv2-live-state"><span>ONLINE LIVE · ZERO DOWNLOAD</span><strong>{onlineLiveMatch.provider || 'Public live provider'}</strong><small>{onlineLiveMatch.matchId ? `match ${onlineLiveMatch.matchId}` : 'watchable live match'}</small></div>
+      <div><span>CLOCK</span><strong>{clockText}</strong><small>provider live time</small></div>
+      <div><span>LINEUP COVERAGE</span><strong>{Number(onlineLiveMatch.coverage || 0)}/10</strong><small>players exposed by live feed</small></div>
+      <div className="gpv2-live-items"><span>MODE</span><div><small>Browser-only scan</small></div></div>
+    </section>;
+  }
+
+  if (!enabled) return <section className="gpv2-live-gate gpv2-card"><div><span>DESKTOP LIVE SYNC · OPTIONAL</span><strong>Guaranteed local clock/items if you ever want it; browser timer above needs no install</strong></div><button onClick={() => { try { sessionStorage.setItem('dotasage:live-sync-enabled', '1'); } catch {} setEnabled(true); }}>CONNECT LOCAL</button></section>;
 
   const bridge = Boolean(state.bridge || health.bridge || health.ok);
   const connected = Boolean(state.connected);
@@ -553,6 +566,7 @@ function CompactPostMatch({ hero }) {
 
 export default function GamePlan({
   patch,
+  onlineLiveMatch,
   draft,
   playerSide = 'radiant',
   laneFilter = 'all',
@@ -579,6 +593,13 @@ export default function GamePlan({
     setMinuteState(next);
     try { sessionStorage.setItem('dotasage:match-minute', String(next)); } catch {}
   };
+  const onlineLiveSeconds = Number(onlineLiveMatch?.gameTimeSeconds);
+  const onlineClockConnected = Boolean(onlineLiveMatch && Number.isFinite(onlineLiveSeconds) && onlineLiveSeconds >= 0);
+
+  useEffect(() => {
+    if (!onlineClockConnected) return;
+    setMinute(onlineLiveSeconds / 60);
+  }, [onlineLiveSeconds, onlineClockConnected]);
   const setMatchState = value => {
     setMatchStateState(value);
     try { sessionStorage.setItem('dotasage:match-state', value); } catch {}
@@ -648,8 +669,8 @@ export default function GamePlan({
       {[['RADIANT', radiant, ratingMap('radiant')], ['DIRE', dire, ratingMap('dire')]].map(([label, heroes, ratings]) => <div key={label}><span>{label} · {label.toLowerCase() === playerSide ? 'YOUR TEAM' : 'ENEMY'}</span><div>{heroes.map(row => <article className={row.id === hero.id ? 'self' : ''} key={row.id}><img src={row.portrait} alt="" /><small>{row.localized_name}</small><b>{signed(ratings?.get(row.id) ?? 0)}</b></article>)}</div></div>)}
     </section>
 
-    <MatchContext minute={minute} state={matchState} onMinute={setMinute} onState={setMatchState} liveClock={liveClockConnected} />
-    <LiveBar itemConstants={itemConstants} onMinute={setMinute} onConnectionChange={setLiveClockConnected} />
+    <MatchContext minute={minute} state={matchState} onMinute={setMinute} onState={setMatchState} liveClock={liveClockConnected || onlineClockConnected} />
+    <LiveBar itemConstants={itemConstants} onMinute={setMinute} onConnectionChange={setLiveClockConnected} onlineLiveMatch={onlineLiveMatch} />
 
     <div className="gpv2-command">
       <div className="gpv2-command-main">
