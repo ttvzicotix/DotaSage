@@ -19,8 +19,8 @@ export default function BrandGlyph({ className = '' }) {
         <path d="M24 14.5 30 20.5 24 26.5 18 20.5 24 14.5Z" className="brand-glyph-oracle" stroke="url(#ds-oracle-v2)" />
         <path d="M24 26.5v4.2M24 30.7 17 34M24 30.7 31 34M17 34h14" className="brand-glyph-path" stroke="url(#ds-oracle-v2)" />
         <circle cx="24" cy="20.5" r="2.1" className="brand-glyph-node" />
-        <circle cx="17" cy="34" r="1.55" className="brand-glyph-node secondary" />
-        <circle cx="31" cy="34" r="1.55" className="brand-glyph-node secondary" />
+        <circle cx="17" cy="34" r="1.55" className="brand-glyph-node secondary purple" />
+        <circle cx="31" cy="34" r="1.55" className="brand-glyph-node secondary cyan" />
       </svg>
     </span>
   );
