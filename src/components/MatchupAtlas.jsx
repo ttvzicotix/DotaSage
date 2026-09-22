@@ -9,7 +9,7 @@ function signedPoints(value) {
   return `${n > 0 ? '+' : ''}${n.toFixed(1)} pp`;
 }
 
-export default function MatchupAtlas({ hero, allies = [], enemies = [] }) {
+export default function MatchupAtlas({ hero, allies = [], enemies = [], patch }) {
   const [status, setStatus] = useState('loading');
   const [matchups, setMatchups] = useState([]);
   const [sort, setSort] = useState('team');
@@ -55,6 +55,9 @@ export default function MatchupAtlas({ hero, allies = [], enemies = [] }) {
     });
   }, [allies, enemies, hero.id, matchups]);
 
+  const providers = useMemo(() => [...new Set(matchups.map(row => row?._provider).filter(Boolean))], [matchups]);
+  const providerLabel = providers.length ? providers.join(' + ') : 'public matchup data';
+
   const visible = useMemo(() => [...rows].sort((a, b) => {
     if (sort === 'hardest') {
       if (a.edge == null && b.edge != null) return 1;
@@ -73,7 +76,7 @@ export default function MatchupAtlas({ hero, allies = [], enemies = [] }) {
   return <section className="gpv2-atlas gpv2-card">
     <div className="gpv2-card-head gpv2-atlas-head">
       <div><span>DRAFT MATCHUP CHART</span><strong>{hero.localized_name} vs only the heroes in this game</strong></div>
-      <small>4 teammates + 5 enemies max · OpenDota direct-matchup history</small>
+      <small>4 teammates + 5 enemies max · {providerLabel} · patch {patch?.id || 'current'}</small>
     </div>
 
     <div className="gpv2-atlas-controls draft-only">
@@ -82,17 +85,17 @@ export default function MatchupAtlas({ hero, allies = [], enemies = [] }) {
     </div>
 
     {status === 'loading' && <p className="gpv2-atlas-status">Loading matchup evidence for this draft…</p>}
-    {status === 'error' && <p className="gpv2-atlas-status">OpenDota matchup data is unavailable right now.</p>}
+    {status === 'error' && <p className="gpv2-atlas-status">Public matchup providers are unavailable right now.</p>}
     {status === 'ready' && <>
       <div className="gpv2-atlas-legend"><span className="ally">ALLY · REFERENCE ONLY</span><span className="drafted">ENEMY</span><span>WR = {hero.localized_name}'s historical win rate against that hero</span></div>
       <div className="gpv2-atlas-grid draft-only-grid">
         {visible.map(row => <article key={row.hero.id} className={`${row.team} ${row.edge == null ? 'unknown' : row.edge >= 0 ? 'positive' : 'negative'}`}>
           <img src={row.hero.portrait} alt="" loading="lazy" />
-          <div className="gpv2-atlas-copy"><b>{row.hero.localized_name}</b><em>{row.team === 'ally' ? 'ALLY · REFERENCE' : 'ENEMY'}</em><small>{row.games ? `${row.games.toLocaleString()} games` : 'no public sample'}</small></div>
+          <div className="gpv2-atlas-copy"><b>{row.hero.localized_name}</b><em>{row.team === 'ally' ? 'ALLY · REFERENCE' : 'ENEMY'}</em><small>{row.games ? `${row.games.toLocaleString()} games · ${matchups.find(sample => Number(sample.hero_id) === Number(row.hero.id))?._provider || providerLabel}` : 'no public sample'}</small></div>
           <div className="gpv2-atlas-numbers"><strong>{row.winRate == null ? '—' : `${(row.winRate * 100).toFixed(1)}%`}</strong><span>{signedPoints(row.edge)}</span></div>
         </article>)}
       </div>
-      <p className="gpv2-atlas-foot">Ally rows are direct head-to-head history for context, not same-team synergy. Enemy rows are the relevant counter evidence for this draft.</p>
+      <p className="gpv2-atlas-foot">Ally rows are direct head-to-head history for context, not same-team synergy. Enemy rows are the relevant counter evidence for this draft. Source: {providerLabel}.</p>
     </>}
   </section>;
 }
