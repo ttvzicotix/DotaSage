@@ -110,12 +110,25 @@ function topItems(group = {}, itemConstants = {}, count = 8) {
 
 function buildItemPhases(itemPopularity, itemConstants, count = 8) {
   if (!itemPopularity) return [];
-  return [
-    ['START', topItems(itemPopularity.start_game_items, itemConstants, count)],
-    ['EARLY', topItems(itemPopularity.early_game_items, itemConstants, count)],
-    ['CORE', topItems(itemPopularity.mid_game_items, itemConstants, count)],
-    ['LATE', topItems(itemPopularity.late_game_items, itemConstants, count)],
+  const phaseGroups = [
+    ['START', itemPopularity.start_game_items],
+    ['EARLY', itemPopularity.early_game_items],
+    ['CORE', itemPopularity.mid_game_items],
+    ['LATE', itemPopularity.late_game_items],
   ];
+  const seen = new Set();
+  return phaseGroups.map(([phase, group]) => {
+    const candidates = topItems(group, itemConstants, Math.max(count * 3, 24));
+    const rows = [];
+    for (const row of candidates) {
+      const id = Number(row.item?.id || row.id);
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      rows.push(row);
+      if (rows.length >= count) break;
+    }
+    return [phase, rows];
+  });
 }
 
 function buildUpgradePaths(phases, lookup) {
@@ -572,7 +585,7 @@ export default function GamePlan({
       <section className="gpv2-card"><span>NEXT CONVERSION</span><strong>Turn the next win into something permanent</strong><p>{objectiveCall(minute, matchState, converter)}</p></section>
     </div>
 
-    <MatchupAtlas hero={hero} enemies={draft.enemies || []} />
+    <MatchupAtlas hero={hero} allies={draft.allies || []} enemies={draft.enemies || []} />
     <ObservedItems items={allItems} counts={observedCounts} onChange={changeObserved} />
     <ItemLab phases={phases} targets={targets} paths={paths} conditionals={conditionals} impacts={impacts} loading={itemLoading} />
     <CompactPostMatch hero={hero} />

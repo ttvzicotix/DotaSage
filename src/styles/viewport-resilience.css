@@ -211,3 +211,39 @@
   .gpv2-lane-hero img { width: 34px !important; height: 23px !important; }
   .gpv2-lane-hero small { display: block !important; }
 }
+
+/* Sept 2026 readability pass: browser zoom and small displays should reflow,
+   but never solve the problem by shrinking already-small copy further. */
+@media (max-width:1280px), (max-height:720px) and (max-width:1500px) {
+  .command-layout .eyebrow,
+  .command-layout small,
+  .command-layout .draft-context,
+  .command-layout .quick-shelf-label small,
+  .command-layout .compact-name small,
+  .command-layout .recommend-foot,
+  .command-layout .profile-bar-title,
+  .command-layout .curve-legend { font-size:10px !important; line-height:1.35 !important; }
+
+  .gpv2-lineups small { font-size:10px !important; }
+  .gpv2-lineups b { font-size:12px !important; }
+  .gpv2 .gpv2-card-head span,
+  .gpv2 .gpv2-side-title span,
+  .gpv2 .gpv2-map-info section > span,
+  .gpv2 .gpv2-brief-grid span,
+  .gpv2 .gpv2-match-context span,
+  .gpv2 .gpv2-livebar span,
+  .gpv2 .gpv2-live-gate span { font-size:10px !important; }
+  .gpv2 .gpv2-brief-grid p,
+  .gpv2 .gpv2-coach-list p,
+  .gpv2 .gpv2-checkpoints p,
+  .gpv2 .gpv2-map-info p,
+  .gpv2 .gpv2-post p,
+  .gpv2 .gpv2-side-card > p { font-size:11px !important; line-height:1.5 !important; }
+  .gpv2 .gpv2-matchup-row span small,
+  .gpv2 .gpv2-fight span small,
+  .gpv2 .gpv2-lane-hero small,
+  .gpv2 .gpv2-phase small,
+  .gpv2 .gpv2-item-responses article span small { font-size:9px !important; }
+  .command-layout *,
+  .gpv2 * { min-width:0; overflow-wrap:anywhere; }
+}
