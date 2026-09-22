@@ -372,7 +372,7 @@ export default function App() {
             pairWins: Number(row.wins || 0), pairGames: Number(row.games_played || 0),
             candidateBase: heroBaseWinRate(statById.get(Number(draft.self.id))), enemyBase: heroBaseWinRate(statById.get(Number(enemy.id))),
           });
-          return { hero: enemy, ...result };
+          return { hero: enemy, provider: row?._provider || null, ...result };
         });
         if (!cancelled) setSelectedPairsLive(pairs);
       } catch (error) {
@@ -427,7 +427,7 @@ export default function App() {
           pairWins: Number(row.games_played || 0) - Number(row.wins || 0), pairGames: Number(row.games_played || 0),
           candidateBase: heroBaseWinRate(statById.get(Number(hero.id))), enemyBase: heroBaseWinRate(statById.get(Number(enemy.id))),
         });
-        return { hero: enemy, ...result };
+        return { hero: enemy, provider: row?._provider || null, ...result };
       });
       const enemyScore = aggregateEnemyScore(pairScores);
       const teammates = draft.allies.filter(a => a.id !== hero.id);
