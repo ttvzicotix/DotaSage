@@ -2204,3 +2204,15 @@ h1,h2,h3,.brand-mark strong,.player-name,.primary-pick-title strong,.compact-nam
   .draft-sync-advanced>div{right:-42px;width:235px}
   .gpv2-provenance{grid-template-columns:1fr 1fr}
 }
+
+
+/* v0.21 draft recovery/share affordance */
+.draft-link-button{
+  min-width:38px;
+  transition:border-color .16s ease,color .16s ease,background .16s ease;
+}
+.draft-link-button.status{
+  color:#9be7ad!important;
+  border-color:rgba(121,227,160,.24)!important;
+  background:rgba(121,227,160,.045)!important;
+}
