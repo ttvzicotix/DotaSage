@@ -18,6 +18,8 @@ import { heroSearchScore } from './data/heroAliases';
 import { fetchLocalGameState } from './services/localGsi';
 import { fetchOnlineLive } from './services/onlineLive';
 import useCurrentPatch from './hooks/useCurrentPatch';
+import { fetchProviderStatus } from './services/providerStatus';
+import DraftFlowBar from './components/DraftFlowBar';
 
 const emptyDraft = () => ({ allies: [], enemies: [], bans: [], self: null });
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -123,11 +125,20 @@ export default function App() {
   });
   const [onlineLiveStatus, setOnlineLiveStatus] = useState({ searching: false, found: false, provider: null, scannedGames: 0, matchId: null, error: null });
   const [onlineLiveMatch, setOnlineLiveMatch] = useState(null);
+  const [providerStatus, setProviderStatus] = useState(null);
   const lastAutoPlanSignatureRef = useRef('');
   const lastLocalDraftSignatureRef = useRef('');
 
   const statById = useMemo(() => new Map(heroStats.map(s => [Number(s.id), s])), [heroStats]);
   const heroById = useMemo(() => new Map(heroes.map(hero => [Number(hero.id), hero])), [heroes]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchProviderStatus().then(status => {
+      if (!cancelled) setProviderStatus(status);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -619,8 +630,19 @@ export default function App() {
         </aside>
 
         <main className="center-stage">
+          <DraftFlowBar
+            connected={Boolean(DEFAULT_PROFILE.accountId)}
+            playerSide={playerSide}
+            laneFilter={laneFilter}
+            allyCount={draft.allies.length}
+            enemyCount={draft.enemies.length}
+            hasPick={Boolean(draft.self)}
+            patch={patch}
+            onlineLiveStatus={onlineLiveStatus}
+            providerStatus={providerStatus}
+          />
           <HeroGrid allHeroes={heroes} roleHeroes={roleEligibleHeroes} heroes={filteredHeroes} scores={scoreBundle.scores} stateForHero={stateForHero} onAction={actOnHero} query={query} setQuery={setQuery} attr={attr} setAttr={setAttr} loadingLive={matrixLoading || rosterLoading} laneFilter={laneFilter} setLaneFilter={setLaneFilter} playerSide={playerSide} />
-          <RecommendationPanel recommendations={recommendations} onPick={actOnHero} draftComplete={draftComplete} allyCount={draft.allies.length} enemyCount={draft.enemies.length} laneLabel={laneLabels[laneFilter]} laneFilter={laneFilter} setLaneFilter={setLaneFilter} matrixLoading={matrixLoading} advisorMode={advisorMode} setAdvisorMode={setAdvisorMode} playerSide={playerSide} />
+          <RecommendationPanel recommendations={recommendations} onPick={actOnHero} draftComplete={draftComplete} allyCount={draft.allies.length} enemyCount={draft.enemies.length} laneLabel={laneLabels[laneFilter]} laneFilter={laneFilter} setLaneFilter={setLaneFilter} matrixLoading={matrixLoading} advisorMode={advisorMode} setAdvisorMode={setAdvisorMode} playerSide={playerSide} patch={patch} providerStatus={providerStatus} />
         </main>
 
         <DraftInsights draft={draft} matrixLoading={matrixLoading} durationData={durationData} durationLoading={durationLoading} />
