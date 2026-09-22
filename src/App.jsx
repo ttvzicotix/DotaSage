@@ -515,6 +515,10 @@ export default function App() {
   }
 
   function toggleOnlineLive() {
+    if (!DEFAULT_PROFILE.accountId) {
+      setOnlineLiveStatus({ searching: false, found: false, provider: null, scannedGames: 0, matchId: null, error: 'Connect a Dota ID first' });
+      return;
+    }
     setOnlineLiveEnabled(current => {
       const next = !current;
       try {
@@ -562,7 +566,7 @@ export default function App() {
     setProfileOpen(false);
     setLegalOpen(false);
     try {
-      ['dotasage:observed-enemy-items','dotasage:match-minute','dotasage:match-state','dotasage:match-clock-start','dotasage:match-signature','dotasage:lane-overrides'].forEach(key => sessionStorage.removeItem(key));
+      ['dotasage:observed-enemy-items','dotasage:match-minute','dotasage:match-state','dotasage:match-clock-start','dotasage:match-signature','dotasage:lane-overrides','dotasage:manual-timer-running','dotasage:manual-timer-base','dotasage:manual-timer-anchor'].forEach(key => sessionStorage.removeItem(key));
     } catch {}
   }
 
