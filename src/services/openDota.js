@@ -47,6 +47,28 @@ function cacheWrite(key, value) {
   catch { /* localStorage can be unavailable/private; memory cache still works */ }
 }
 
+export function clearPatchSensitiveCaches() {
+  heroStatsCache = null;
+  itemsCache = null;
+  matchupCache.clear();
+  durationCache.clear();
+  itemPopularityCache.clear();
+  if (typeof window === 'undefined') return;
+  try {
+    const exact = ['dotasage:heroes', 'dotasage:heroStats', 'dotasage:items'];
+    exact.forEach(key => window.localStorage.removeItem(key));
+    for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+      const key = window.localStorage.key(index);
+      if (!key) continue;
+      if (
+        key.startsWith('dotasage:matchups:') ||
+        key.startsWith('dotasage:durations:') ||
+        key.startsWith('dotasage:itemPopularity:')
+      ) window.localStorage.removeItem(key);
+    }
+  } catch {}
+}
+
 export function clearPlayerCache(accountId) {
   if (!accountId || typeof window === 'undefined') return;
   const id = String(accountId);
