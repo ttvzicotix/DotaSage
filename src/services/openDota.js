@@ -110,6 +110,53 @@ async function getJson(path, { ttlMs = 0, cacheKey = path, retries = 2 } = {}) {
   throw lastError;
 }
 
+function withProviderTag(value, provider) {
+  if (!provider || value == null) return value;
+  if (Array.isArray(value)) return value.map(row => row && typeof row === 'object' ? { ...row, _provider: provider } : row);
+  if (typeof value === 'object') return { ...value, _provider: provider };
+  return value;
+}
+
+async function getPlayerResource(resource, accountId, { ttlMs = 0, cacheKey, take = 100, skip = 0, fallbackPath } = {}) {
+  if (!accountId) return resource === 'profile' || resource === 'wl' ? null : [];
+  if (ttlMs && cacheKey) {
+    const cached = cacheRead(cacheKey, ttlMs);
+    if (cached != null) return cached;
+  }
+
+  try {
+    const query = new URLSearchParams({
+      accountId: String(accountId),
+      resource,
+      take: String(take),
+      skip: String(skip),
+    });
+    const response = await fetch(`/api/player?${query.toString()}`, { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error(`Provider router ${response.status}`);
+    const payload = await response.json();
+    const value = withProviderTag(payload?.data, payload?.provider);
+    if (ttlMs && cacheKey) cacheWrite(cacheKey, value);
+    return value;
+  } catch (error) {
+    console.warn(`DotaSage provider router unavailable for ${resource}; using direct OpenDota fallback.`, error);
+    if (!fallbackPath) return resource === 'profile' || resource === 'wl' ? null : [];
+    return getJson(fallbackPath, { ttlMs, cacheKey, retries: 2 });
+  }
+}
+
+export async function requestPlayerRefresh(accountId) {
+  if (!accountId) return false;
+  try {
+    const response = await fetch(`${BASE}/players/${accountId}/refresh`, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function fetchHeroes() {
   try {
     const live = await getJson('/heroes', { ttlMs: 24 * 60 * 60 * 1000, cacheKey: 'heroes' });
@@ -129,35 +176,51 @@ export async function fetchHeroes() {
   }
 }
 
-// The public build ships without a hardcoded player identity. These helpers return
-// neutral values until a player explicitly connects a public Dota account ID.
+// Player resources go through the DotaSage provider router first. OpenDota remains
+// the direct browser fallback so local development and provider outages still degrade cleanly.
 export async function fetchPlayer(accountId) {
-  if (!accountId) return null;
-  return getJson(`/players/${accountId}`, { ttlMs: 10 * 60 * 1000, cacheKey: `player:${accountId}` });
+  return getPlayerResource('profile', accountId, {
+    ttlMs: 10 * 60 * 1000,
+    cacheKey: `player:${accountId}`,
+    fallbackPath: `/players/${accountId}`,
+  });
 }
 export async function fetchPlayerHeroes(accountId) {
-  if (!accountId) return [];
-  return getJson(`/players/${accountId}/heroes`, { ttlMs: 10 * 60 * 1000, cacheKey: `playerHeroes:${accountId}` });
+  return getPlayerResource('heroes', accountId, {
+    ttlMs: 10 * 60 * 1000,
+    cacheKey: `playerHeroes:${accountId}`,
+    take: 500,
+    fallbackPath: `/players/${accountId}/heroes`,
+  });
 }
 export async function fetchPlayerWinLoss(accountId) {
-  if (!accountId) return null;
-  return getJson(`/players/${accountId}/wl`, { ttlMs: 10 * 60 * 1000, cacheKey: `wl:${accountId}` });
+  return getPlayerResource('wl', accountId, {
+    ttlMs: 10 * 60 * 1000,
+    cacheKey: `wl:${accountId}`,
+    fallbackPath: `/players/${accountId}/wl`,
+  });
 }
 export async function fetchRecentMatches(accountId) {
-  if (!accountId) return [];
-  return getJson(`/players/${accountId}/recentMatches`, { ttlMs: 5 * 60 * 1000, cacheKey: `recent:${accountId}` });
+  return getPlayerResource('recent', accountId, {
+    ttlMs: 5 * 60 * 1000,
+    cacheKey: `recent:${accountId}`,
+    take: 20,
+    fallbackPath: `/players/${accountId}/recentMatches`,
+  });
 }
 export async function fetchMatch(matchId) { return getJson(`/matches/${matchId}`, { ttlMs: 12 * 60 * 60 * 1000, cacheKey: `match:${matchId}`, retries: 2 }); }
 
-export async function fetchPlayerMatchHistory(accountId, { pageSize = 500, maxPages = 30 } = {}) {
+export async function fetchPlayerMatchHistory(accountId, { pageSize = 100, maxPages = 30 } = {}) {
   if (!accountId) return [];
   const all = []; const seen = new Set();
   let offset = 0;
   for (let page = 0; page < maxPages; page += 1) {
-    const rows = await getJson(`/players/${accountId}/matches?limit=${pageSize}&offset=${offset}`, {
+    const rows = await getPlayerResource('history', accountId, {
       ttlMs: 30 * 60 * 1000,
       cacheKey: `history:${accountId}:${pageSize}:${offset}`,
-      retries: 2,
+      take: pageSize,
+      skip: offset,
+      fallbackPath: `/players/${accountId}/matches?limit=${pageSize}&offset=${offset}`,
     });
     if (!Array.isArray(rows) || !rows.length) break;
     let added = 0;
@@ -166,9 +229,8 @@ export async function fetchPlayerMatchHistory(accountId, { pageSize = 500, maxPa
       if (seen.has(key)) continue;
       seen.add(key); all.push(row); added += 1;
     }
-    // Advance by what the API actually returned, not what we requested. Some endpoints/services cap page sizes.
     offset += rows.length;
-    if (!added) break;
+    if (!added || rows.length < pageSize) break;
   }
   return all;
 }
