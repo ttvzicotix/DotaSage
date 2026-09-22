@@ -5,6 +5,10 @@ import { heroSearchScore } from '../data/heroAliases';
 const attrs = [['allFilter', 'ALL'], ['str', 'STR'], ['agi', 'AGI'], ['int', 'INT'], ['all', 'UNI']];
 const INITIAL_ROSTER = 48;
 const ROSTER_STEP = 48;
+const positionFilters = [
+  ['all', 'FLEX'], ['safe', 'POS 1'], ['mid', 'POS 2'], ['off', 'POS 3'],
+  ['support4', 'POS 4'], ['support5', 'POS 5'], ['roam', 'ROAM'],
+];
 
 function actionForMapSide(mapSide, playerSide) { return mapSide === playerSide ? 'ally' : 'enemy'; }
 
@@ -22,7 +26,7 @@ function QuickHero({ hero, state, onAction, playerSide }) {
   </article>;
 }
 
-export default function HeroGrid({ allHeroes, roleHeroes, heroes, scores, stateForHero, onAction, query, setQuery, attr, setAttr, loadingLive, laneFilter, playerSide = 'radiant' }) {
+export default function HeroGrid({ allHeroes, roleHeroes, heroes, scores, stateForHero, onAction, query, setQuery, attr, setAttr, loadingLive, laneFilter, setLaneFilter, playerSide = 'radiant' }) {
   const [expanded, setExpanded] = useState(false);
   const [rosterScope, setRosterScope] = useState('all');
   const [renderLimit, setRenderLimit] = useState(INITIAL_ROSTER);
@@ -66,6 +70,11 @@ export default function HeroGrid({ allHeroes, roleHeroes, heroes, scores, stateF
         <div className="quick-search-scope always-all" aria-label="Quick Draft behavior"><span><b>{allHeroes.length} HEROES</b> · Radiant / Dire = map side · ★ Pick · Ban · search resets after every add</span></div>
       </div>
       <button className="browse-toggle" onClick={() => setExpanded(true)}>BROWSE ROSTER <b>⌄</b></button>
+    </div>
+
+    <div className="quick-position-picker" aria-label="Pick Advisor role filter">
+      <span><b>PICK ROLE</b><small>Limits recommendations to role-relevant heroes</small></span>
+      <div>{positionFilters.map(([key, label]) => <button key={key} className={laneFilter === key ? 'active' : ''} onClick={() => setLaneFilter?.(key)}>{label}</button>)}</div>
     </div>
 
     <div className="quick-hero-shelf">
