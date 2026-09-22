@@ -20,6 +20,7 @@ import { fetchOnlineLive } from './services/onlineLive';
 import useCurrentPatch from './hooks/useCurrentPatch';
 import { fetchProviderStatus } from './services/providerStatus';
 import DraftFlowBar from './components/DraftFlowBar';
+import { decodeDraftState, draftPayload, encodeDraftState } from './utils/draftShare';
 
 const emptyDraft = () => ({ allies: [], enemies: [], bans: [], self: null });
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -127,11 +128,61 @@ export default function App() {
   const [onlineLiveStatus, setOnlineLiveStatus] = useState({ searching: false, found: false, provider: null, scannedGames: 0, matchId: null, error: null });
   const [onlineLiveMatch, setOnlineLiveMatch] = useState(null);
   const [providerStatus, setProviderStatus] = useState(null);
+  const [copyDraftStatus, setCopyDraftStatus] = useState('');
   const lastAutoPlanSignatureRef = useRef('');
+  const draftSessionReadyRef = useRef(false);
   const lastLocalDraftSignatureRef = useRef('');
 
   const statById = useMemo(() => new Map(heroStats.map(s => [Number(s.id), s])), [heroStats]);
   const heroById = useMemo(() => new Map(heroes.map(hero => [Number(hero.id), hero])), [heroes]);
+
+  useEffect(() => {
+    if (draftSessionReadyRef.current || !heroes.length) return;
+
+    let payload = null;
+    try {
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('draft');
+      if (hash) payload = decodeDraftState(hash);
+      if (!payload) payload = JSON.parse(sessionStorage.getItem('dotasage:draft-session') || 'null');
+    } catch {}
+
+    if (payload) {
+      const resolve = ids => (Array.isArray(ids) ? ids : [])
+        .map(id => heroById.get(Number(id)))
+        .filter(Boolean)
+        .slice(0, 5);
+      const allies = resolve(payload.a);
+      const enemies = resolve(payload.e);
+      const bans = (Array.isArray(payload.b) ? payload.b : [])
+        .map(id => heroById.get(Number(id)))
+        .filter(Boolean);
+      const self = payload.s ? heroById.get(Number(payload.s)) || null : null;
+      if (allies.length || enemies.length || bans.length || self) {
+        setDraft({ allies, enemies, bans, self });
+        setPlayerSide(payload.side === 'dire' ? 'dire' : 'radiant');
+        setLaneFilter(typeof payload.role === 'string' ? payload.role : 'all');
+        setAdvisorMode(typeof payload.mode === 'string' ? payload.mode : 'best');
+        setView('draft');
+        if (allies.length === 5 && enemies.length === 5 && self) {
+          lastAutoPlanSignatureRef.current = `${self.id}|${allies.map(h => h.id).join('-')}|${enemies.map(h => h.id).join('-')}`;
+        }
+      }
+    }
+
+    draftSessionReadyRef.current = true;
+  }, [heroes, heroById]);
+
+  useEffect(() => {
+    if (!draftSessionReadyRef.current) return;
+    try {
+      sessionStorage.setItem('dotasage:draft-session', JSON.stringify(draftPayload({
+        draft,
+        playerSide,
+        laneFilter,
+        advisorMode,
+      })));
+    } catch {}
+  }, [draft, playerSide, laneFilter, advisorMode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -628,6 +679,24 @@ export default function App() {
     });
   }
 
+  async function copyDraftLink() {
+    const encoded = encodeDraftState(draftPayload({ draft, playerSide, laneFilter, advisorMode }));
+    if (!encoded) {
+      setCopyDraftStatus('Could not encode draft');
+      return;
+    }
+    try {
+      const url = new URL(window.location.href);
+      url.hash = `draft=${encoded}`;
+      await navigator.clipboard.writeText(url.toString());
+      setCopyDraftStatus('COPIED');
+      window.setTimeout(() => setCopyDraftStatus(''), 1800);
+    } catch {
+      setCopyDraftStatus('COPY FAILED');
+      window.setTimeout(() => setCopyDraftStatus(''), 1800);
+    }
+  }
+
   function hardReset() {
     setDraft(emptyDraft());
     setView('draft');
@@ -640,7 +709,8 @@ export default function App() {
     setLegalOpen(false);
     setAboutOpen(false);
     try {
-      ['dotasage:observed-enemy-items','dotasage:match-minute','dotasage:match-state','dotasage:match-clock-start','dotasage:match-signature','dotasage:lane-overrides','dotasage:manual-timer-running','dotasage:manual-timer-base','dotasage:manual-timer-anchor'].forEach(key => sessionStorage.removeItem(key));
+      ['dotasage:observed-enemy-items','dotasage:match-minute','dotasage:match-state','dotasage:match-clock-start','dotasage:match-signature','dotasage:lane-overrides','dotasage:manual-timer-running','dotasage:manual-timer-base','dotasage:manual-timer-anchor','dotasage:draft-session'].forEach(key => sessionStorage.removeItem(key));
+      if (window.location.hash.includes('draft=')) history.replaceState(null, '', window.location.pathname + window.location.search);
     } catch {}
   }
 
@@ -681,7 +751,7 @@ export default function App() {
       <div className="command-layout">
         <aside className="left-rail">
           <PlayerProfile profile={DEFAULT_PROFILE} player={player} loading={profileLoading} personalSummary={personalSummary} winLoss={winLoss} recentSummary={recent} onOpenProfile={() => setProfileOpen(true)} />
-          <DraftBoard draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; lastLocalDraftSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} playerSide={playerSide} onSideChange={changePlayerSide} onSwapTeams={swapTeams} onlineLiveEnabled={onlineLiveEnabled} onlineLiveStatus={onlineLiveStatus} onToggleOnlineLive={toggleOnlineLive} liveDraftEnabled={localDraftEnabled} liveDraftStatus={localDraftStatus} onToggleLiveDraft={toggleLocalDraftSync} />
+          <DraftBoard draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; lastLocalDraftSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} onCopyLink={copyDraftLink} copyStatus={copyDraftStatus} playerSide={playerSide} onSideChange={changePlayerSide} onSwapTeams={swapTeams} onlineLiveEnabled={onlineLiveEnabled} onlineLiveStatus={onlineLiveStatus} onToggleOnlineLive={toggleOnlineLive} liveDraftEnabled={localDraftEnabled} liveDraftStatus={localDraftStatus} onToggleLiveDraft={toggleLocalDraftSync} />
         </aside>
 
         <main className="center-stage">
