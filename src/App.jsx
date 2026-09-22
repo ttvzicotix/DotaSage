@@ -198,7 +198,7 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchRoleMeta(laneFilter).then(value => {
+    fetchRoleMeta(laneFilter, patch.id).then(value => {
       if (!cancelled) setRoleMeta(value || { provider: null, position: null, rows: [] });
     });
     return () => { cancelled = true; };
