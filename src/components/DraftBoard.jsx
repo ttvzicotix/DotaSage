@@ -24,7 +24,7 @@ function TeamBlock({ label, type, heroes, count, onRemove }) {
   );
 }
 
-export default function DraftBoard({ draft, onRemove, onClear, onOpenGamePlan, playerSide = 'radiant', onSideChange, onSwapTeams, onlineLiveEnabled = false, onlineLiveStatus = {}, onToggleOnlineLive, liveDraftEnabled = false, liveDraftStatus = {}, onToggleLiveDraft }) {
+export default function DraftBoard({ draft, onRemove, onClear, onOpenGamePlan, onCopyLink, copyStatus = '', playerSide = 'radiant', onSideChange, onSwapTeams, onlineLiveEnabled = false, onlineLiveStatus = {}, onToggleOnlineLive, liveDraftEnabled = false, liveDraftStatus = {}, onToggleLiveDraft }) {
   const complete = draft.allies.length === 5 && draft.enemies.length === 5;
   return (
     <section className="draft-board glass-panel v06-draft-board">
@@ -43,6 +43,7 @@ export default function DraftBoard({ draft, onRemove, onClear, onOpenGamePlan, p
               </button>
             </div>
           </details>
+          <button className={`ghost-button draft-link-button ${copyStatus ? 'status' : ''}`} onClick={onCopyLink} title="Copy a shareable link for this draft">{copyStatus || 'LINK'}</button>
           <button className="ghost-button" onClick={onSwapTeams} title="Swap your team and enemy team">⇄</button>
           <button className="ghost-button" onClick={onClear}>Reset</button>
         </div>
