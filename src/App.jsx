@@ -110,8 +110,14 @@ export default function App() {
   });
   const [localDraftStatus, setLocalDraftStatus] = useState({ bridge: false, connected: false, active: false, gameState: null });
   const [onlineLiveEnabled, setOnlineLiveEnabled] = useState(() => {
-    try { return sessionStorage.getItem('dotasage:online-live-enabled') === '1'; }
-    catch { return false; }
+    try {
+      const saved = sessionStorage.getItem('dotasage:online-live-enabled');
+      if (saved != null) return saved === '1';
+      const localLive = sessionStorage.getItem('dotasage:live-sync-enabled') === '1';
+      return Boolean(DEFAULT_PROFILE.accountId) && !localLive;
+    } catch {
+      return Boolean(DEFAULT_PROFILE.accountId);
+    }
   });
   const [onlineLiveStatus, setOnlineLiveStatus] = useState({ searching: false, found: false, provider: null, scannedGames: 0, matchId: null, error: null });
   const [onlineLiveMatch, setOnlineLiveMatch] = useState(null);
