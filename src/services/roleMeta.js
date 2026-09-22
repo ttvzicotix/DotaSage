@@ -13,11 +13,12 @@ export function stratzPositionForLane(laneFilter) {
   return laneToPosition[laneFilter] || null;
 }
 
-export async function fetchRoleMeta(laneFilter) {
+export async function fetchRoleMeta(laneFilter, patchId = 'current') {
   const position = stratzPositionForLane(laneFilter);
   if (!position) return { provider: null, configured: false, position: null, rows: [] };
 
-  const cached = cache.get(position);
+  const cacheKey = `${position}:${patchId || 'current'}`;
+  const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.savedAt < TTL) return cached.value;
 
   try {
@@ -26,7 +27,7 @@ export async function fetchRoleMeta(laneFilter) {
     });
     if (!response.ok) throw new Error(`Role meta ${response.status}`);
     const value = await response.json();
-    cache.set(position, { savedAt: Date.now(), value });
+    cache.set(cacheKey, { savedAt: Date.now(), value });
     return value;
   } catch {
     return { provider: null, configured: false, position, rows: [] };
