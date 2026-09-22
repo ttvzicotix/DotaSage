@@ -75,27 +75,33 @@ export default async function handler(req, res) {
   }
 
   const attempts = [];
-  try {
-    const rows = await openDota(heroId);
-    attempts.push({ provider: 'OpenDota', ok: true, useful: rows.length > 0 });
-    if (rows.length) {
-      res.setHeader('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=21600');
-      return res.status(200).json({ provider: 'OpenDota', rows, synergy: [], attempts });
+  const configured = Boolean(process.env.STRATZ_TOKEN || process.env.STRATZ_API_TOKEN);
+
+  if (configured) {
+    try {
+      const primary = await stratz(heroId);
+      attempts.push({ provider: 'STRATZ', configured: true, ok: Boolean(primary), useful: Boolean(primary?.rows?.length) });
+      if (primary?.rows?.length) {
+        res.setHeader('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=21600');
+        return res.status(200).json({ provider: 'STRATZ', ...primary, attempts });
+      }
+    } catch (error) {
+      attempts.push({ provider: 'STRATZ', configured: true, ok: false, message: error?.message || 'query_failed' });
     }
-  } catch (error) {
-    attempts.push({ provider: 'OpenDota', ok: false, status: error?.status || null });
+  } else {
+    attempts.push({ provider: 'STRATZ', configured: false, ok: false, useful: false });
   }
 
   try {
-    const fallback = await stratz(heroId);
-    const configured = Boolean(process.env.STRATZ_TOKEN || process.env.STRATZ_API_TOKEN);
-    attempts.push({ provider: 'STRATZ', configured, ok: Boolean(fallback), useful: Boolean(fallback?.rows?.length) });
-    if (fallback?.rows?.length) {
+    const fallback = await openDota(heroId);
+    const tagged = fallback.map(row => ({ ...row, _provider: row?._provider || 'OpenDota' }));
+    attempts.push({ provider: 'OpenDota', ok: true, useful: tagged.length > 0 });
+    if (tagged.length) {
       res.setHeader('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=21600');
-      return res.status(200).json({ provider: 'STRATZ', ...fallback, attempts });
+      return res.status(200).json({ provider: 'OpenDota', rows: tagged, synergy: [], attempts });
     }
   } catch (error) {
-    attempts.push({ provider: 'STRATZ', configured: true, ok: false, message: error?.message || 'query_failed' });
+    attempts.push({ provider: 'OpenDota', ok: false, status: error?.status || null });
   }
 
   return res.status(200).json({ provider: null, rows: [], synergy: [], attempts });
