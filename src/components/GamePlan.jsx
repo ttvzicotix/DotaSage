@@ -561,7 +561,7 @@ function CompactPostMatch({ hero }) {
     if (Number(player.gold_per_min || 0)) review.push(`${player.gold_per_min} GPM · ${player.xp_per_min ?? '–'} XPM · ${player.last_hits ?? '–'} last hits.`);
     if (!review.length) review.push('No single box-score failure dominates. Review the first major momentum swing and the next two fights.');
   }
-  return <details id="post-match-review" className="gpv2-post gpv2-card"><summary><span><b>POST-MATCH</b> Review the latest public {hero.localized_name} match</span><strong>⌄</strong></summary><div><button onClick={load} disabled={status === 'loading'}>{status === 'loading' ? 'CHECKING…' : 'FIND LATEST MATCH'}</button>{status === 'no-profile' && <p>Connect a Dota ID first.</p>}{status === 'missing' && <p>No recent public match for this hero was returned.</p>}{status === 'error' && <p>OpenDota could not be queried right now.</p>}{match && <p><b>Match {match.match_id}</b> · {match.kills}/{match.deaths}/{match.assists} · {Math.round(Number(match.duration || 0) / 60)} min</p>}{review.map((text, index) => <p key={index}>{text}</p>)}</div></details>;
+  return <details id="post-match-review" className="gpv2-post gpv2-card"><summary><span><b>POST-MATCH</b> Review the latest public {hero.localized_name} match</span><strong>⌄</strong></summary><div><button onClick={load} disabled={status === 'loading'}>{status === 'loading' ? 'CHECKING…' : 'FIND LATEST MATCH'}</button>{status === 'no-profile' && <p>Connect a Dota ID first.</p>}{status === 'missing' && <p>No recent public match for this hero was returned.</p>}{status === 'error' && <p>Public match providers could not be queried right now.</p>}{match && <p><b>Match {match.match_id}</b> · {match.kills}/{match.deaths}/{match.assists} · {Math.round(Number(match.duration || 0) / 60)} min</p>}{review.map((text, index) => <p key={index}>{text}</p>)}</div></details>;
 }
 
 export default function GamePlan({
@@ -635,6 +635,18 @@ export default function GamePlan({
   const enemySide = playerSide === 'radiant' ? 'dire' : 'radiant';
   const laneOpponents = laneMap.lanes.find(row => row.lane === selfLane)?.[enemySide]?.map(entry => entry.hero) || [];
   const knownPairs = (pairBreakdown || []).filter(row => Number(row.games || 0) > 0 && Number(row.confidence || 0) > 0);
+  const pairProviders = [...new Set(knownPairs.map(row => row.provider).filter(Boolean))];
+  const pairSamples = knownPairs.reduce((sum, row) => sum + Number(row.games || 0), 0);
+  const pairConfidence = knownPairs.length
+    ? knownPairs.reduce((sum, row) => sum + Number(row.confidence || 0), 0) / knownPairs.length
+    : 0;
+  const pairCoverage = draft.enemies?.length ? knownPairs.length / draft.enemies.length : 0;
+  const evidenceLabel = pairCoverage >= .8 && pairConfidence >= .8 && pairSamples >= 1500
+    ? 'HIGH'
+    : pairCoverage >= .5 && pairConfidence >= .55 && pairSamples >= 400
+      ? 'MED'
+      : 'LOW';
+  const matchupSourceLabel = pairProviders.length ? pairProviders.join(' + ') : 'PUBLIC MATCH DATA';
   const threats = [...knownPairs].sort((a, b) => a.score - b.score).slice(0, 3);
   const opportunities = [...knownPairs].sort((a, b) => b.score - a.score).slice(0, 3);
   const threat = threats[0];
@@ -663,6 +675,14 @@ export default function GamePlan({
       <img src={hero.portrait} alt="" />
       <div className="gpv2-hero-copy"><span>YOUR HERO · {playerSide.toUpperCase()}</span><h1>{hero.localized_name}</h1><p>{roleLabel} · {laneTone} into the entered enemy draft</p></div>
       <div className="gpv2-scores"><ScorePill label="VS ENEMY" value={selectedScore?.enemyScore} signed /><ScorePill label="TEAM FIT" value={selectedScore?.teamFit} /><ScorePill label="PERSONAL" value={selectedScore?.personalFit != null ? selectedScore.personalFit / 10 : null} /><ScorePill label="RECOMMEND" value={selectedScore?.overall} /></div>
+    </section>
+
+    <section className="gpv2-provenance" aria-label="Game plan data provenance">
+      <div><span>COUNTER SOURCE</span><strong>{matchupSourceLabel}</strong></div>
+      <div><span>EVIDENCE</span><strong className={`evidence-${evidenceLabel.toLowerCase()}`}>{evidenceLabel}</strong><small>{knownPairs.length}/{draft.enemies?.length || 0} enemies covered</small></div>
+      <div><span>PAIR SAMPLE</span><strong>{pairSamples ? pairSamples.toLocaleString() : 'building'}</strong></div>
+      <div><span>PATCH</span><strong>{patch?.id || '—'}</strong></div>
+      <div><span>CLOCK</span><strong>{onlineClockConnected ? 'ONLINE LIVE' : liveClockConnected ? 'LOCAL LIVE' : 'MANUAL READY'}</strong></div>
     </section>
 
     <section className="gpv2-lineups">
@@ -698,7 +718,7 @@ export default function GamePlan({
       <section className="gpv2-card"><span>NEXT CONVERSION</span><strong>Turn the next win into something permanent</strong><p>{objectiveCall(minute, matchState, converter)}</p></section>
     </div>
 
-    <MatchupAtlas hero={hero} allies={draft.allies || []} enemies={draft.enemies || []} />
+    <MatchupAtlas hero={hero} allies={draft.allies || []} enemies={draft.enemies || []} patch={patch} />
     <ObservedItems items={allItems} counts={observedCounts} onChange={changeObserved} />
     <ItemLab phases={phases} targets={targets} paths={paths} conditionals={conditionals} impacts={impacts} loading={itemLoading} />
     <CompactPostMatch hero={hero} />

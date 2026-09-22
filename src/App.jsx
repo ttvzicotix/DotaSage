@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './styles.css';
 import { DEFAULT_PROFILE } from './data/defaultProfile';
-import { fetchHeroes, fetchHeroMatchups, fetchHeroStats, fetchPlayer, fetchPlayerHeroes, fetchPlayerWinLoss, fetchRecentMatches, fetchPlayerMatchHistory, fetchHeroDurations, fetchHeroItemPopularity, fetchItems, portraitUrl } from './services/openDota';
+import { fetchHeroes, fetchHeroMatchups, fetchHeroStats, fetchPlayer, fetchPlayerHeroes, fetchPlayerWinLoss, fetchRecentMatches, fetchPlayerMatchHistory, fetchHeroDurations, fetchHeroItemPopularity, fetchHeroEvidence, fetchItems, portraitUrl } from './services/openDota';
 import { buildPersonalScores } from './engine/playerModel';
-import { aggregateEnemyScore, compositionFit, compositionSynergyScore, draftFitScore, heroBaseWinRate, overallRecommendation, pairCounterScore } from './engine/scoring';
+import { aggregateEnemyScore, aggregateSynergyScore, compositionFit, compositionSynergyScore, draftFitScore, heroBaseWinRate, overallRecommendation, pairCounterScore, pairSynergyScore } from './engine/scoring';
 import PlayerProfile from './components/PlayerProfile';
 import DraftBoard from './components/DraftBoard';
 import HeroGrid from './components/HeroGrid';
@@ -18,6 +18,10 @@ import { heroSearchScore } from './data/heroAliases';
 import { fetchLocalGameState } from './services/localGsi';
 import { fetchOnlineLive } from './services/onlineLive';
 import useCurrentPatch from './hooks/useCurrentPatch';
+import { fetchProviderStatus } from './services/providerStatus';
+import DraftFlowBar from './components/DraftFlowBar';
+import { decodeDraftState, draftPayload, encodeDraftState } from './utils/draftShare';
+import { fetchRoleMeta } from './services/roleMeta';
 
 const emptyDraft = () => ({ allies: [], enemies: [], bans: [], self: null });
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -28,6 +32,15 @@ function metaScoreFromStat(stat) {
   const picks = Number(stat?.pub_pick || 0);
   const sampleLift = Math.min(1, Math.log10(Math.max(10, picks)) / 5);
   return clamp(5 + (wr - 0.5) * 90 * (0.65 + sampleLift * 0.35), 0, 10);
+}
+
+function metaScoreFromRole(row, fallbackStat) {
+  const games = Number(row?.games || 0);
+  const wins = Number(row?.wins || 0);
+  if (!games || !Number.isFinite(wins)) return metaScoreFromStat(fallbackStat);
+  const wr = wins / games;
+  const sampleLift = Math.min(1, Math.log10(Math.max(10, games)) / 4);
+  return clamp(5 + (wr - 0.5) * 90 * (0.7 + sampleLift * 0.3), 0, 10);
 }
 
 function matchesLane(hero, lane) {
@@ -90,6 +103,7 @@ export default function App() {
   const [draft, setDraft] = useState(emptyDraft);
   const [enemyMatrix, setEnemyMatrix] = useState(new Map());
   const [durationData, setDurationData] = useState(new Map());
+  const [allySynergyMatrix, setAllySynergyMatrix] = useState(new Map());
   const [durationLoading, setDurationLoading] = useState(false);
   const [selectedPairsLive, setSelectedPairsLive] = useState([]);
   const [selectedPairLoading, setSelectedPairLoading] = useState(false);
@@ -123,11 +137,80 @@ export default function App() {
   });
   const [onlineLiveStatus, setOnlineLiveStatus] = useState({ searching: false, found: false, provider: null, scannedGames: 0, matchId: null, error: null });
   const [onlineLiveMatch, setOnlineLiveMatch] = useState(null);
+  const [providerStatus, setProviderStatus] = useState(null);
+  const [roleMeta, setRoleMeta] = useState({ provider: null, position: null, rows: [] });
+  const [copyDraftStatus, setCopyDraftStatus] = useState('');
+  const [draftSessionHydrated, setDraftSessionHydrated] = useState(false);
   const lastAutoPlanSignatureRef = useRef('');
   const lastLocalDraftSignatureRef = useRef('');
 
   const statById = useMemo(() => new Map(heroStats.map(s => [Number(s.id), s])), [heroStats]);
   const heroById = useMemo(() => new Map(heroes.map(hero => [Number(hero.id), hero])), [heroes]);
+  const roleMetaById = useMemo(() => new Map((roleMeta?.rows || []).map(row => [Number(row.hero_id), row])), [roleMeta]);
+
+  useEffect(() => {
+    if (draftSessionHydrated || !heroes.length) return;
+
+    let payload = null;
+    try {
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('draft');
+      if (hash) payload = decodeDraftState(hash);
+      if (!payload) payload = JSON.parse(sessionStorage.getItem('dotasage:draft-session') || 'null');
+    } catch {}
+
+    if (payload) {
+      const resolve = ids => (Array.isArray(ids) ? ids : [])
+        .map(id => heroById.get(Number(id)))
+        .filter(Boolean)
+        .slice(0, 5);
+      const allies = resolve(payload.a);
+      const enemies = resolve(payload.e);
+      const bans = (Array.isArray(payload.b) ? payload.b : [])
+        .map(id => heroById.get(Number(id)))
+        .filter(Boolean);
+      const self = payload.s ? heroById.get(Number(payload.s)) || null : null;
+      if (allies.length || enemies.length || bans.length || self) {
+        setDraft({ allies, enemies, bans, self });
+        setPlayerSide(payload.side === 'dire' ? 'dire' : 'radiant');
+        setLaneFilter(typeof payload.role === 'string' ? payload.role : 'all');
+        setAdvisorMode(typeof payload.mode === 'string' ? payload.mode : 'best');
+        setView('draft');
+        if (allies.length === 5 && enemies.length === 5 && self) {
+          lastAutoPlanSignatureRef.current = `${self.id}|${allies.map(h => h.id).join('-')}|${enemies.map(h => h.id).join('-')}`;
+        }
+      }
+    }
+
+    setDraftSessionHydrated(true);
+  }, [heroes, heroById, draftSessionHydrated]);
+
+  useEffect(() => {
+    if (!draftSessionHydrated) return;
+    try {
+      sessionStorage.setItem('dotasage:draft-session', JSON.stringify(draftPayload({
+        draft,
+        playerSide,
+        laneFilter,
+        advisorMode,
+      })));
+    } catch {}
+  }, [draft, playerSide, laneFilter, advisorMode, draftSessionHydrated]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchRoleMeta(laneFilter, patch.id).then(value => {
+      if (!cancelled) setRoleMeta(value || { provider: null, position: null, rows: [] });
+    });
+    return () => { cancelled = true; };
+  }, [laneFilter, patch.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchProviderStatus().then(status => {
+      if (!cancelled) setProviderStatus(status);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -333,6 +416,28 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
+    if (!draft.allies.length) {
+      setAllySynergyMatrix(new Map());
+      return undefined;
+    }
+    (async () => {
+      const next = new Map();
+      await Promise.all(draft.allies.map(async ally => {
+        try {
+          const evidence = await fetchHeroEvidence(ally.id);
+          next.set(ally.id, Array.isArray(evidence?.synergy) ? evidence.synergy : []);
+        } catch (error) {
+          console.warn(`Synergy evidence unavailable for ${ally.localized_name}`, error);
+          next.set(ally.id, []);
+        }
+      }));
+      if (!cancelled) setAllySynergyMatrix(next);
+    })();
+    return () => { cancelled = true; };
+  }, [draft.allies, patch.id]);
+
+  useEffect(() => {
+    let cancelled = false;
     const selected = [...draft.allies, ...draft.enemies].filter((h, i, rows) => rows.findIndex(x => x.id === h.id) === i);
     if (!selected.length) { setDurationData(new Map()); setDurationLoading(false); return undefined; }
     (async () => {
@@ -361,7 +466,7 @@ export default function App() {
             pairWins: Number(row.wins || 0), pairGames: Number(row.games_played || 0),
             candidateBase: heroBaseWinRate(statById.get(Number(draft.self.id))), enemyBase: heroBaseWinRate(statById.get(Number(enemy.id))),
           });
-          return { hero: enemy, ...result };
+          return { hero: enemy, provider: row?._provider || null, ...result };
         });
         if (!cancelled) setSelectedPairsLive(pairs);
       } catch (error) {
@@ -416,20 +521,59 @@ export default function App() {
           pairWins: Number(row.games_played || 0) - Number(row.wins || 0), pairGames: Number(row.games_played || 0),
           candidateBase: heroBaseWinRate(statById.get(Number(hero.id))), enemyBase: heroBaseWinRate(statById.get(Number(enemy.id))),
         });
-        return { hero: enemy, ...result };
+        return { hero: enemy, provider: row?._provider || null, ...result };
       });
       const enemyScore = aggregateEnemyScore(pairScores);
       const teammates = draft.allies.filter(a => a.id !== hero.id);
-      const synergyScore = compositionSynergyScore(hero, teammates);
+      const modeledSynergyScore = compositionSynergyScore(hero, teammates);
+      const empiricalSynergyPairs = teammates.map(ally => {
+        const rows = allySynergyMatrix.get(ally.id) || [];
+        const row = rows.find(sample => Number(sample.hero_id) === Number(hero.id));
+        if (!row || !Number(row.games_played || 0)) return null;
+        const result = pairSynergyScore({
+          pairWins: Number(row.wins || 0),
+          pairGames: Number(row.games_played || 0),
+          candidateBase: heroBaseWinRate(statById.get(Number(hero.id))),
+          allyBase: heroBaseWinRate(statById.get(Number(ally.id))),
+        });
+        return { hero: ally, provider: row?._provider || null, ...result };
+      }).filter(Boolean);
+      const empiricalSynergyScore = aggregateSynergyScore(empiricalSynergyPairs);
+      const synergyScore = empiricalSynergyPairs.length ? empiricalSynergyScore : modeledSynergyScore;
+      const synergySource = empiricalSynergyPairs.length ? 'empirical' : 'modeled';
+      const synergyGames = empiricalSynergyPairs.reduce((sum, row) => sum + Number(row.games || 0), 0);
+      const synergyCoverage = teammates.length ? empiricalSynergyPairs.length / teammates.length : 0;
+      const synergyProviders = [...new Set(empiricalSynergyPairs.map(row => row.provider).filter(Boolean))];
       const teamFit = compositionFit(hero, teammates);
-      const metaScore = metaScoreFromStat(statById.get(Number(hero.id)));
+      const roleMetaRow = roleMetaById.get(Number(hero.id));
+      const metaScore = metaScoreFromRole(roleMetaRow, statById.get(Number(hero.id)));
+      const metaProvider = roleMetaRow?._provider || 'OpenDota';
+      const metaGames = Number(roleMetaRow?.games || 0);
+      const metaPosition = roleMetaRow?._position || null;
       const draftFit = draftFitScore({ enemyScore, synergyScore, teamFit, metaScore });
       const overall = overallRecommendation({ enemyScore, synergyScore, teamFit, personalFit: personal.score, metaScore });
-      scores.set(hero.id, { enemyScore, synergyScore, teamFit, personalFit: personal.score, metaScore, draftFit, overall, personal });
+      scores.set(hero.id, {
+        enemyScore,
+        synergyScore,
+        synergySource,
+        synergyGames,
+        synergyCoverage,
+        synergyProviders,
+        modeledSynergyScore,
+        teamFit,
+        personalFit: personal.score,
+        metaScore,
+        metaProvider,
+        metaGames,
+        metaPosition,
+        draftFit,
+        overall,
+        personal,
+      });
       pairBreakdowns.set(hero.id, pairScores);
     }
     return { scores, pairBreakdowns };
-  }, [heroes, draft.allies, draft.enemies, enemyMatrix, personalForHero, statById]);
+  }, [heroes, draft.allies, draft.enemies, enemyMatrix, allySynergyMatrix, personalForHero, statById, roleMetaById]);
 
   const usedIds = useMemo(() => new Set([...draft.allies.map(h => h.id), ...draft.enemies.map(h => h.id), ...draft.bans.map(h => h.id)]), [draft]);
   const roleEligibleHeroes = useMemo(() => heroes.filter(hero => matchesLane(hero, laneFilter)), [heroes, laneFilter]);
@@ -562,6 +706,24 @@ export default function App() {
     });
   }
 
+  async function copyDraftLink() {
+    const encoded = encodeDraftState(draftPayload({ draft, playerSide, laneFilter, advisorMode }));
+    if (!encoded) {
+      setCopyDraftStatus('Could not encode draft');
+      return;
+    }
+    try {
+      const url = new URL(window.location.href);
+      url.hash = `draft=${encoded}`;
+      await navigator.clipboard.writeText(url.toString());
+      setCopyDraftStatus('COPIED');
+      window.setTimeout(() => setCopyDraftStatus(''), 1800);
+    } catch {
+      setCopyDraftStatus('COPY FAILED');
+      window.setTimeout(() => setCopyDraftStatus(''), 1800);
+    }
+  }
+
   function hardReset() {
     setDraft(emptyDraft());
     setView('draft');
@@ -574,7 +736,8 @@ export default function App() {
     setLegalOpen(false);
     setAboutOpen(false);
     try {
-      ['dotasage:observed-enemy-items','dotasage:match-minute','dotasage:match-state','dotasage:match-clock-start','dotasage:match-signature','dotasage:lane-overrides','dotasage:manual-timer-running','dotasage:manual-timer-base','dotasage:manual-timer-anchor'].forEach(key => sessionStorage.removeItem(key));
+      ['dotasage:observed-enemy-items','dotasage:match-minute','dotasage:match-state','dotasage:match-clock-start','dotasage:match-signature','dotasage:lane-overrides','dotasage:manual-timer-running','dotasage:manual-timer-base','dotasage:manual-timer-anchor','dotasage:draft-session'].forEach(key => sessionStorage.removeItem(key));
+      if (window.location.hash.includes('draft=')) window.history.replaceState(null, '', window.location.pathname + window.location.search);
     } catch {}
   }
 
@@ -600,7 +763,7 @@ export default function App() {
 
   if (view === 'gameplan' && draft.self) return <div className="app-shell gameplan-shell">
     <div className="ambient-grid" />
-    <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
+    <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
     <GamePlan patch={patch} onlineLiveMatch={onlineLiveMatch} draft={draft} playerSide={playerSide} laneFilter={laneFilter} lineupRatings={lineupRatings} selectedScore={selectedScore} pairBreakdown={selectedPairs} pairLoading={selectedPairLoading} pairError={selectedPairError && !selectedPairs.some(x => x.games > 0)} positionLabel={laneLabels[laneFilter]} itemPopularity={itemPopularity} itemConstants={itemConstants} itemLoading={itemLoading} onBack={() => setView('draft')} />
     <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} profile={DEFAULT_PROFILE} player={player} winLoss={winLoss} recentMatches={recentMatches} allMatches={allMatches} historyLoading={historyLoading} historyError={historyError} playerHeroRows={playerHeroRows} heroes={heroes} recentSummary={recent} />
     <LegalModal open={legalOpen} onClose={() => setLegalOpen(false)} />
@@ -610,17 +773,28 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="ambient-grid" />
-      <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
+      <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
 
       <div className="command-layout">
         <aside className="left-rail">
           <PlayerProfile profile={DEFAULT_PROFILE} player={player} loading={profileLoading} personalSummary={personalSummary} winLoss={winLoss} recentSummary={recent} onOpenProfile={() => setProfileOpen(true)} />
-          <DraftBoard draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; lastLocalDraftSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} playerSide={playerSide} onSideChange={changePlayerSide} onSwapTeams={swapTeams} onlineLiveEnabled={onlineLiveEnabled} onlineLiveStatus={onlineLiveStatus} onToggleOnlineLive={toggleOnlineLive} liveDraftEnabled={localDraftEnabled} liveDraftStatus={localDraftStatus} onToggleLiveDraft={toggleLocalDraftSync} />
+          <DraftBoard draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; lastLocalDraftSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} onCopyLink={copyDraftLink} copyStatus={copyDraftStatus} playerSide={playerSide} onSideChange={changePlayerSide} onSwapTeams={swapTeams} onlineLiveEnabled={onlineLiveEnabled} onlineLiveStatus={onlineLiveStatus} onToggleOnlineLive={toggleOnlineLive} liveDraftEnabled={localDraftEnabled} liveDraftStatus={localDraftStatus} onToggleLiveDraft={toggleLocalDraftSync} />
         </aside>
 
         <main className="center-stage">
+          <DraftFlowBar
+            connected={Boolean(DEFAULT_PROFILE.accountId)}
+            playerSide={playerSide}
+            laneFilter={laneFilter}
+            allyCount={draft.allies.length}
+            enemyCount={draft.enemies.length}
+            hasPick={Boolean(draft.self)}
+            patch={patch}
+            onlineLiveStatus={onlineLiveStatus}
+            providerStatus={providerStatus}
+          />
           <HeroGrid allHeroes={heroes} roleHeroes={roleEligibleHeroes} heroes={filteredHeroes} scores={scoreBundle.scores} stateForHero={stateForHero} onAction={actOnHero} query={query} setQuery={setQuery} attr={attr} setAttr={setAttr} loadingLive={matrixLoading || rosterLoading} laneFilter={laneFilter} setLaneFilter={setLaneFilter} playerSide={playerSide} />
-          <RecommendationPanel recommendations={recommendations} onPick={actOnHero} draftComplete={draftComplete} allyCount={draft.allies.length} enemyCount={draft.enemies.length} laneLabel={laneLabels[laneFilter]} laneFilter={laneFilter} setLaneFilter={setLaneFilter} matrixLoading={matrixLoading} advisorMode={advisorMode} setAdvisorMode={setAdvisorMode} playerSide={playerSide} />
+          <RecommendationPanel recommendations={recommendations} onPick={actOnHero} draftComplete={draftComplete} allyCount={draft.allies.length} enemyCount={draft.enemies.length} laneLabel={laneLabels[laneFilter]} laneFilter={laneFilter} setLaneFilter={setLaneFilter} matrixLoading={matrixLoading} advisorMode={advisorMode} setAdvisorMode={setAdvisorMode} playerSide={playerSide} patch={patch} providerStatus={providerStatus} />
         </main>
 
         <DraftInsights draft={draft} matrixLoading={matrixLoading} durationData={durationData} durationLoading={durationLoading} />

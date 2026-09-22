@@ -104,6 +104,7 @@ async function stratzWinLoss(id) {
 }
 
 async function stratzMatches(id, take = 20, skip = 0) {
+  const safeTake = Math.max(1, Math.min(100, Number(take || 20)));
   const data = await stratzQuery(`
     query DotaSageMatches($id: Long!, $take: Int!, $skip: Int!) {
       player(steamAccountId: $id) {
@@ -127,7 +128,7 @@ async function stratzMatches(id, take = 20, skip = 0) {
         }
       }
     }
-  `, { id, take, skip });
+  `, { id, take: safeTake, skip });
   const rows = data?.player?.matches;
   if (!Array.isArray(rows)) return null;
   return rows.map(match => {
@@ -156,8 +157,14 @@ async function stratzMatches(id, take = 20, skip = 0) {
 }
 
 async function stratzHeroes(id) {
-  const rows = await stratzMatches(id, 500, 0);
-  if (!rows?.length) return null;
+  const rows = [];
+  for (let skip = 0; skip < 500; skip += 100) {
+    const batch = await stratzMatches(id, 100, skip);
+    if (!batch?.length) break;
+    rows.push(...batch);
+    if (batch.length < 100) break;
+  }
+  if (!rows.length) return null;
   const totals = new Map();
   for (const row of rows) {
     if (!row.hero_id) continue;
@@ -223,32 +230,37 @@ export default async function handler(req, res) {
   if (!id) return res.status(400).json({ error: 'invalid_account_id' });
 
   const attempts = [];
+  const stratzConfigured = Boolean(process.env.STRATZ_TOKEN || process.env.STRATZ_API_TOKEN);
 
-  try {
-    const primary = await openDota(resource, id, take, skip);
-    attempts.push({ provider: 'OpenDota', ok: true, useful: useful(resource, primary) });
-    if (useful(resource, primary)) {
-      res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
-      return res.status(200).json({ provider: 'OpenDota', data: primary, attempts });
+  if (stratzConfigured) {
+    try {
+      let primary = null;
+      if (resource === 'profile') primary = await stratzProfile(id);
+      else if (resource === 'wl') primary = await stratzWinLoss(id);
+      else if (resource === 'heroes') primary = await stratzHeroes(id);
+      else if (resource === 'recent') primary = await stratzMatches(id, Math.min(take, 50), skip);
+      else if (resource === 'history') primary = await stratzMatches(id, take, skip);
+      attempts.push({ provider: 'STRATZ', ok: Boolean(primary), configured: true, useful: useful(resource, primary) });
+      if (useful(resource, primary)) {
+        res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
+        return res.status(200).json({ provider: 'STRATZ', data: primary, attempts });
+      }
+    } catch (error) {
+      attempts.push({ provider: 'STRATZ', ok: false, configured: true, message: error?.message || 'query_failed' });
     }
-  } catch (error) {
-    attempts.push({ provider: 'OpenDota', ok: false, status: error?.status || null });
+  } else {
+    attempts.push({ provider: 'STRATZ', ok: false, configured: false, useful: false });
   }
 
   try {
-    let fallback = null;
-    if (resource === 'profile') fallback = await stratzProfile(id);
-    else if (resource === 'wl') fallback = await stratzWinLoss(id);
-    else if (resource === 'heroes') fallback = await stratzHeroes(id);
-    else if (resource === 'recent') fallback = await stratzMatches(id, Math.min(take, 50), skip);
-    else if (resource === 'history') fallback = await stratzMatches(id, take, skip);
-    attempts.push({ provider: 'STRATZ', ok: Boolean(fallback), configured: Boolean(process.env.STRATZ_TOKEN || process.env.STRATZ_API_TOKEN), useful: useful(resource, fallback) });
+    const fallback = await openDota(resource, id, take, skip);
+    attempts.push({ provider: 'OpenDota', ok: true, useful: useful(resource, fallback) });
     if (useful(resource, fallback)) {
       res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
-      return res.status(200).json({ provider: 'STRATZ', data: fallback, attempts });
+      return res.status(200).json({ provider: 'OpenDota', data: fallback, attempts });
     }
   } catch (error) {
-    attempts.push({ provider: 'STRATZ', ok: false, configured: true, message: error?.message || 'query_failed' });
+    attempts.push({ provider: 'OpenDota', ok: false, status: error?.status || null });
   }
 
   if (resource === 'profile') {
