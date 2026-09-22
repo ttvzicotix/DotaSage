@@ -1,20 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
-    <linearGradient id="frame" x1="9" y1="8" x2="56" y2="57" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#79d8ff"/>
-      <stop offset=".48" stop-color="#e6bd69"/>
-      <stop offset="1" stop-color="#e76a70"/>
+    <linearGradient id="frame" x1="10" y1="9" x2="54" y2="55" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#a66cff"/>
+      <stop offset=".48" stop-color="#79d8ff"/>
+      <stop offset="1" stop-color="#e6bd69"/>
     </linearGradient>
-    <linearGradient id="line" x1="16" y1="19" x2="49" y2="47" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#b9edff"/>
-      <stop offset=".52" stop-color="#f1d18d"/>
-      <stop offset="1" stop-color="#f08a8e"/>
+    <linearGradient id="oracle" x1="22" y1="19" x2="43" y2="47" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#c7a4ff"/>
+      <stop offset=".52" stop-color="#bceeff"/>
+      <stop offset="1" stop-color="#f1d18d"/>
     </linearGradient>
   </defs>
-  <rect width="64" height="64" rx="15" fill="#080b11"/>
-  <rect x="4.5" y="4.5" width="55" height="55" rx="14" fill="#0d1119" stroke="#ffffff" stroke-opacity=".07"/>
-  <path d="M32 10 54 22.5v19L32 54 10 41.5v-19L32 10Z" fill="#0c1017" stroke="url(#frame)" stroke-width="2"/>
-  <path d="M18 22h20l7 7-7 7H24l-7 7 7 6h22" fill="none" stroke="url(#line)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="32" cy="36" r="3.6" fill="#f1d18d"/>
-  <path d="M12 32h5M47 32h5M32 12v5M32 47v5" stroke="#8fb9ca" stroke-opacity=".55" stroke-width="1.5" stroke-linecap="round"/>
+  <rect width="64" height="64" rx="15" fill="#080a11"/>
+  <rect x="4.5" y="4.5" width="55" height="55" rx="14" fill="#0d1018" stroke="#ffffff" stroke-opacity=".07"/>
+  <path d="M32 11 52 22.5v19L32 53 12 41.5v-19L32 11Z" fill="#0c1018" stroke="url(#frame)" stroke-width="2.3"/>
+  <path d="M32 19 40 27 32 35 24 27 32 19Z" fill="#121725" stroke="url(#oracle)" stroke-width="2.4"/>
+  <path d="M32 35v5.5M32 40.5 23 45M32 40.5 41 45M23 45h18" fill="none" stroke="url(#oracle)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="27" r="3" fill="#f1d18d"/>
+  <circle cx="23" cy="45" r="2.1" fill="#a66cff"/>
+  <circle cx="41" cy="45" r="2.1" fill="#79d8ff"/>
 </svg>

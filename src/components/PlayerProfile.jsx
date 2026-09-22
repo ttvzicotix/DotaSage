@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import PlayerConnection from './PlayerConnection';
-import { clearPlayerCache } from '../services/openDota';
+import { clearPlayerCache, requestPlayerRefresh } from '../services/openDota';
 import { forgetPlayerSnapshot, loadPlayerSnapshot, savePlayerSnapshot } from '../services/playerStorage';
 import { normalizeDotaAccountId } from '../utils/dotaAccountId';
 import '../styles/player-profile-status.css';
@@ -59,13 +59,8 @@ function forgetPlayer(accountId) {
   window.location.reload();
 }
 
-function refreshPlayer(accountId, event) {
-  event?.stopPropagation?.();
-  clearPlayerCache(accountId);
-  window.location.reload();
-}
-
 export default function PlayerProfile({ profile, player, loading, personalSummary, winLoss, recentSummary, onOpenProfile }) {
+  const [refreshing, setRefreshing] = useState(false);
   const snapshot = profile.accountId ? loadPlayerSnapshot(profile.accountId) : null;
   const liveAvatar = player?.profile?.avatarfull || player?.profile?.avatarmedium || null;
   const avatar = liveAvatar || snapshot?.avatar || null;
@@ -86,14 +81,26 @@ export default function PlayerProfile({ profile, player, loading, personalSummar
   const usingSavedProfile = !player && Boolean(snapshot?.name);
   const profileResolved = Boolean(player?.profile || player?.rank_tier || player?.mmr_estimate);
   const noPublicMatches = !loading && !liveTotalGames && !recentSummary?.count && !personalSummary?.played;
+  const provider = player?._provider || winLoss?._provider || null;
   const savedAge = snapshot?.savedAt ? ageLabel(snapshot.savedAt) : null;
   const dataLabel = loading && !snapshot
-    ? 'SYNCING OPENDOTA'
+    ? 'CHECKING PUBLIC PROVIDERS'
     : usingSavedProfile
       ? `SAVED LOCALLY${savedAge ? ` · ${savedAge}` : ''}`
       : noPublicMatches
-        ? profileResolved ? 'PROFILE FOUND · MATCH HISTORY UNAVAILABLE' : 'NO PUBLIC OPENDOTA HISTORY'
-        : 'OPENDOTA DATA';
+        ? profileResolved
+          ? `${String(provider || 'PUBLIC').toUpperCase()} PROFILE · MATCH HISTORY UNAVAILABLE`
+          : 'NO PUBLIC MATCH HISTORY'
+        : `${String(provider || 'PUBLIC').toUpperCase()} DATA`;
+
+  const refreshSources = async event => {
+    event?.stopPropagation?.();
+    if (refreshing) return;
+    setRefreshing(true);
+    clearPlayerCache(profile.accountId);
+    await requestPlayerRefresh(profile.accountId);
+    window.setTimeout(() => window.location.reload(), 350);
+  };
 
   useEffect(() => {
     if (!profile.accountId || loading) return;
@@ -121,7 +128,7 @@ export default function PlayerProfile({ profile, player, loading, personalSummar
     <PlayerConnection accountId={profile.accountId} source={profileSource()} onConnect={savePlayer} onForget={() => forgetPlayer(profile.accountId)} />
     <section className="player-card glass-panel clickable-profile" onClick={onOpenProfile} role="button" tabIndex={0} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onOpenProfile?.()} title="Open player profile and match history">
       <div className="player-topline"><span>PLAYER // {usingSavedProfile ? 'SAVED' : 'CONNECTED'}</span><i /></div>
-      <div className="player-data-status"><span className={usingSavedProfile ? 'saved' : noPublicMatches ? 'limited' : 'fresh'}>{dataLabel}</span><button onClick={event => refreshPlayer(profile.accountId, event)}>REFRESH OPENDOTA</button></div>
+      <div className="player-data-status"><span className={usingSavedProfile ? 'saved' : noPublicMatches ? 'limited' : 'fresh'}>{dataLabel}</span><button disabled={refreshing} onClick={refreshSources}>{refreshing ? 'REFRESHING…' : 'REFRESH SOURCES'}</button></div>
       <div className="player-row">
         <div className="avatar-wrap">
           {avatar ? <img src={avatar} alt="" /> : <div className="avatar-fallback">P</div>}
@@ -129,14 +136,14 @@ export default function PlayerProfile({ profile, player, loading, personalSummar
         </div>
         <div className="player-copy">
           <div className="player-name">{name}</div>
-          <div className="player-rank">{loading && !usingSavedProfile ? 'Syncing OpenDota…' : `${rankLabel(effectiveRankTier)}${usingSavedProfile ? ' · saved locally' : ''}`}</div>
+          <div className="player-rank">{loading && !usingSavedProfile ? 'Checking public providers…' : `${rankLabel(effectiveRankTier)}${usingSavedProfile ? ' · saved locally' : provider ? ` · ${provider}` : ''}`}</div>
           <div className="player-id">ID {profile.accountId}</div>
         </div>
         <div className="mmr-chip"><span>MMR EST.</span><strong>{loading && !snapshot ? '…' : mmr ? mmr.toLocaleString() : '—'}</strong></div>
       </div>
       <div className="profile-metrics profile-metrics-primary">
         <div><strong>{overallWr == null ? '—' : `${overallWr.toFixed(1)}%`}</strong><span>indexed WR</span></div>
-        <div><strong>{totalGames ? totalGames.toLocaleString() : '—'}</strong><span>OpenDota W/L index</span></div>
+        <div><strong>{totalGames ? totalGames.toLocaleString() : '—'}</strong><span>{winLoss?._provider || provider || 'public'} W/L index</span></div>
         <div><strong>{effectiveRecent?.winRate == null ? '—' : `${effectiveRecent.winRate.toFixed(0)}%`}</strong><span>recent WR</span></div>
       </div>
       <div className="recent-line">
@@ -150,7 +157,7 @@ export default function PlayerProfile({ profile, player, loading, personalSummar
         <span><b>{loading && !snapshot ? '…' : effectivePersonal?.played ?? 0}</b> heroes played</span>
         <span><b>{loading && !snapshot ? '…' : effectivePersonal?.learning ?? 0}</b> low / learning</span>
       </div>
-      {noPublicMatches && <div className="profile-availability-note">OpenDota did not return usable public match history for this account. No OpenDota login is required, but Dota 2's “Expose Public Match Data” setting must be enabled for future matches to be indexed. Objective draft tools still work without personal history.</div>}
+      {noPublicMatches && <div className="profile-availability-note">No configured public provider returned usable match history for this account. Dota 2's “Expose Public Match Data” setting controls public history; matches played after it is enabled should begin appearing. DotaSage can still use public identity plus objective draft/meta tools without personal history.</div>}
       <div className="profile-open-hint">VIEW PROFILE · HERO HISTORY · RECENT MATCHES <b>→</b></div>
     </section>
   </>;

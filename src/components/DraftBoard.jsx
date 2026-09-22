@@ -24,20 +24,31 @@ function TeamBlock({ label, type, heroes, count, onRemove }) {
   );
 }
 
-export default function DraftBoard({ draft, onRemove, onClear, onOpenGamePlan, playerSide = 'radiant', onSideChange, onSwapTeams, liveDraftEnabled = false, liveDraftStatus = {}, onToggleLiveDraft }) {
+export default function DraftBoard({ draft, onRemove, onClear, onOpenGamePlan, playerSide = 'radiant', onSideChange, onSwapTeams, onlineLiveEnabled = false, onlineLiveStatus = {}, onToggleOnlineLive, liveDraftEnabled = false, liveDraftStatus = {}, onToggleLiveDraft }) {
   const complete = draft.allies.length === 5 && draft.enemies.length === 5;
   return (
     <section className="draft-board glass-panel v06-draft-board">
       <div className="panel-head compact-head">
         <div><div className="eyebrow">LIVE DRAFT</div><h2>Lineups</h2></div>
         <div className="draft-head-actions">
-          <button className={`live-draft-toggle ${liveDraftEnabled ? liveDraftStatus.active ? 'active' : 'enabled' : ''}`} onClick={onToggleLiveDraft} title="Use the optional local Dota GSI companion to sync picks and bans">
-            <i /> {liveDraftEnabled ? liveDraftStatus.active ? 'AUTO LIVE' : liveDraftStatus.bridge ? 'AUTO READY' : 'AUTO WAIT' : 'AUTO DRAFT'}
+          <button className={`online-live-toggle ${onlineLiveEnabled ? onlineLiveStatus.found ? 'active' : 'enabled' : ''}`} onClick={onToggleOnlineLive} title="Zero-download scan for your account in provider-listed live/watchable matches">
+            <i /> {onlineLiveEnabled ? onlineLiveStatus.found ? 'ONLINE LIVE' : onlineLiveStatus.searching ? 'SCANNING…' : 'ONLINE SCAN' : 'ONLINE SCAN'}
           </button>
-          <button className="ghost-button" onClick={onSwapTeams} title="Swap your team and enemy team">⇄ Swap</button>
+          <button className={`live-draft-toggle local-only ${liveDraftEnabled ? liveDraftStatus.active ? 'active' : 'enabled' : ''}`} onClick={onToggleLiveDraft} title="Optional desktop Live Sync — only needed for guaranteed local client data">
+            <i /> {liveDraftEnabled ? liveDraftStatus.active ? 'LOCAL LIVE' : liveDraftStatus.bridge ? 'LOCAL READY' : 'LOCAL WAIT' : 'LOCAL'}
+          </button>
+          <button className="ghost-button" onClick={onSwapTeams} title="Swap your team and enemy team">⇄</button>
           <button className="ghost-button" onClick={onClear}>Reset</button>
         </div>
       </div>
+      {onlineLiveEnabled && <div className={`online-live-status ${onlineLiveStatus.found ? 'active' : onlineLiveStatus.error ? 'error' : 'searching'}`}>
+        <i />
+        <span>{onlineLiveStatus.found
+          ? `${onlineLiveStatus.provider || 'Online provider'} found match ${onlineLiveStatus.matchId || ''} · lineups/time update automatically when exposed`
+          : onlineLiveStatus.error
+            ? 'Online live provider is unavailable right now · manual draft still works'
+            : `Zero-download live scan · ${onlineLiveStatus.scannedGames || 0} watchable games checked · manual entry remains available`}</span>
+      </div>}
       <div className="side-selector" aria-label="Choose your map side">
         <span>YOUR SIDE</span>
         <button className={playerSide === 'radiant' ? 'radiant active' : 'radiant'} onClick={() => onSideChange('radiant')}><i /> RADIANT</button>
@@ -48,8 +59,8 @@ export default function DraftBoard({ draft, onRemove, onClear, onOpenGamePlan, p
         <span>{liveDraftStatus.active
           ? `Local draft detected${liveDraftStatus.gameState ? ` · ${liveDraftStatus.gameState}` : ''} · picks/bans sync automatically`
           : liveDraftStatus.bridge
-            ? 'Local bridge connected · waiting for Dota draft data'
-            : 'Waiting for the DotaSage local bridge on 127.0.0.1'}</span>
+            ? 'Optional local bridge connected · waiting for Dota draft data'
+            : 'Optional desktop sync is off-line · browser-only draft/timer still work'}</span>
       </div>}
       <div className="team-columns map-side-columns">
         {playerSide === 'radiant' ? <>
