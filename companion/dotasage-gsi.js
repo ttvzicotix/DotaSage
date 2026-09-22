@@ -57,6 +57,114 @@ function dotaAccountId(player) {
   return null;
 }
 
+function numericHeroId(value) {
+  const id = Number(value?.id ?? value?.hero_id ?? value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function draftSeries(team, kind) {
+  if (!team || typeof team !== 'object') return [];
+  const rows = [];
+  const pattern = new RegExp(`^${kind}(\\d+)_idimport http from 'node:http';
+
+const HOST = '127.0.0.1';
+const PORT = 31982;
+const TOKEN = 'dotasage-local-v1';
+let latest = null;
+let updatedAt = 0;
+let postCount = 0;
+let authFailures = 0;
+let parseFailures = 0;
+let lastPostAt = 0;
+let lastError = null;
+
+function cors(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Private-Network', 'true');
+  res.setHeader('Cache-Control', 'no-store');
+}
+
+function nestedValues(obj) {
+  if (!obj || typeof obj !== 'object') return [];
+  return Object.values(obj).flatMap(v => (v && typeof v === 'object') ? [v, ...nestedValues(v)] : []);
+}
+
+function firstNamed(obj, prefix) {
+  const candidates = [obj, ...nestedValues(obj)];
+  return candidates.find(v => typeof v?.name === 'string' && v.name.startsWith(prefix)) || null;
+}
+
+function ownItems(payload) {
+  const root = payload?.items;
+  if (!root || typeof root !== 'object') return [];
+  return Object.entries(root)
+    .filter(([, value]) => value && typeof value === 'object' && typeof value.name === 'string')
+    .map(([slot, value]) => ({
+      name: value.name,
+      slot,
+      neutral: String(slot).toLowerCase().includes('neutral'),
+      purchaser: value.purchaser ?? null,
+      can_cast: value.can_cast ?? null,
+      cooldown: value.cooldown ?? null,
+    }))
+    .filter(value => /^item_/.test(value.name));
+}
+
+, 'i');
+
+  for (const [key, value] of Object.entries(team)) {
+    const match = key.match(pattern);
+    const id = match ? numericHeroId(value) : null;
+    if (match && id) rows.push({ slot: Number(match[1]), id });
+  }
+
+  const plural = team[`${kind}s`];
+  if (Array.isArray(plural)) {
+    plural.forEach((value, index) => {
+      const id = numericHeroId(value);
+      if (id) rows.push({ slot: index, id });
+    });
+  } else if (plural && typeof plural === 'object') {
+    Object.entries(plural).forEach(([key, value], index) => {
+      const id = numericHeroId(value);
+      if (!id) return;
+      const parsed = Number(String(key).replace(/\D/g, ''));
+      rows.push({ slot: Number.isFinite(parsed) ? parsed : index, id });
+    });
+  }
+
+  return rows
+    .sort((a, b) => a.slot - b.slot)
+    .filter((row, index, all) => all.findIndex(candidate => candidate.id === row.id) === index)
+    .map(row => row.id);
+}
+
+function sanitizeDraft(payload) {
+  const draft = payload?.draft;
+  if (!draft || typeof draft !== 'object') return null;
+  const radiant = draft.team2 || draft.radiant || {};
+  const dire = draft.team3 || draft.dire || {};
+  const normalized = {
+    active_team: draft.activeteam ?? draft.active_team ?? null,
+    is_pick: draft.pick ?? draft.is_pick ?? null,
+    active_team_time_remaining: draft.activeteam_time_remaining ?? draft.active_team_time_remaining ?? null,
+    radiant_bonus_time: draft.radiant_bonus_time ?? null,
+    dire_bonus_time: draft.dire_bonus_time ?? null,
+    radiant: {
+      picks: draftSeries(radiant, 'pick'),
+      bans: draftSeries(radiant, 'ban'),
+    },
+    dire: {
+      picks: draftSeries(dire, 'pick'),
+      bans: draftSeries(dire, 'ban'),
+    },
+  };
+  const total = normalized.radiant.picks.length + normalized.dire.picks.length + normalized.radiant.bans.length + normalized.dire.bans.length;
+  return total || normalized.active_team != null ? normalized : null;
+}
+
 function gameStateInfo(rawState) {
   const raw = String(rawState || '');
   const labels = {
@@ -121,9 +229,11 @@ function sanitize(payload) {
       xpm: stat(player.xpm),
       net_worth: stat(player.net_worth),
       team_name: player.team_name ?? null,
+      team: player.team ?? player.team_number ?? null,
       activity: player.activity ?? null,
     } : null,
     items: ownItems(payload),
+    draft: sanitizeDraft(payload),
   };
 }
 
