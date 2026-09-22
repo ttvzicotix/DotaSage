@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { normalizeItemConstants } from '../src/services/openDota.js';
+import { normalizeDotaAccountId } from '../src/utils/dotaAccountId.js';
 
 // Synthetic regression fixture for the namespace bug that produced impossible
 // build arrows. This validates ID -> canonical-key normalization; it is not a
@@ -33,3 +34,10 @@ for (const impossible of ['phase_boots', 'power_treads', 'blade_of_alacrity', 'b
 }
 
 console.log('item constant normalization regression: PASS');
+
+assert.equal(normalizeDotaAccountId('3190691'), '3190691');
+assert.equal(normalizeDotaAccountId('76561197963456419'), '3190691');
+assert.equal(normalizeDotaAccountId('not-a-player'), null);
+assert.equal(normalizeDotaAccountId('76561197960265728'), null);
+
+console.log('Dota account ID normalization regression: PASS');
