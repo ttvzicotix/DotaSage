@@ -104,6 +104,7 @@ async function stratzWinLoss(id) {
 }
 
 async function stratzMatches(id, take = 20, skip = 0) {
+  const safeTake = Math.max(1, Math.min(100, Number(take || 20)));
   const data = await stratzQuery(`
     query DotaSageMatches($id: Long!, $take: Int!, $skip: Int!) {
       player(steamAccountId: $id) {
@@ -127,7 +128,7 @@ async function stratzMatches(id, take = 20, skip = 0) {
         }
       }
     }
-  `, { id, take, skip });
+  `, { id, take: safeTake, skip });
   const rows = data?.player?.matches;
   if (!Array.isArray(rows)) return null;
   return rows.map(match => {
@@ -156,8 +157,14 @@ async function stratzMatches(id, take = 20, skip = 0) {
 }
 
 async function stratzHeroes(id) {
-  const rows = await stratzMatches(id, 500, 0);
-  if (!rows?.length) return null;
+  const rows = [];
+  for (let skip = 0; skip < 500; skip += 100) {
+    const batch = await stratzMatches(id, 100, skip);
+    if (!batch?.length) break;
+    rows.push(...batch);
+    if (batch.length < 100) break;
+  }
+  if (!rows.length) return null;
   const totals = new Map();
   for (const row of rows) {
     if (!row.hero_id) continue;
