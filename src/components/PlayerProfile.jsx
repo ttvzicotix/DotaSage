@@ -17,7 +17,7 @@ function rankLabel(rankTier) {
 }
 
 function mmrEstimate(player) {
-  const raw = player?.mmr_estimate?.estimate ?? player?.mmr_estimate;
+  const raw = player?.computed_mmr ?? player?.mmr_estimate?.estimate ?? player?.mmr_estimate;
   const value = Number(raw);
   return Number.isFinite(value) && value > 0 ? Math.round(value) : null;
 }
@@ -61,6 +61,7 @@ function forgetPlayer(accountId) {
 
 export default function PlayerProfile({ profile, player, loading, personalSummary, winLoss, recentSummary, onOpenProfile }) {
   const [refreshing, setRefreshing] = useState(false);
+  const [autoRefreshQueued, setAutoRefreshQueued] = useState(false);
   const snapshot = profile.accountId ? loadPlayerSnapshot(profile.accountId) : null;
   const liveAvatar = player?.profile?.avatarfull || player?.profile?.avatarmedium || null;
   const avatar = liveAvatar || snapshot?.avatar || null;
@@ -101,6 +102,23 @@ export default function PlayerProfile({ profile, player, loading, personalSummar
     await requestPlayerRefresh(profile.accountId);
     window.setTimeout(() => window.location.reload(), 350);
   };
+
+  useEffect(() => {
+    if (!profile.accountId || loading || !noPublicMatches || !profileResolved) return;
+    let alreadyQueued = false;
+    try {
+      const key = `dotasage:auto-refresh-requested:${profile.accountId}`;
+      alreadyQueued = sessionStorage.getItem(key) === '1';
+      if (!alreadyQueued) sessionStorage.setItem(key, '1');
+    } catch {}
+    if (alreadyQueued) return;
+
+    let cancelled = false;
+    requestPlayerRefresh(profile.accountId).then(ok => {
+      if (!cancelled && ok) setAutoRefreshQueued(true);
+    });
+    return () => { cancelled = true; };
+  }, [profile.accountId, loading, noPublicMatches, profileResolved]);
 
   useEffect(() => {
     if (!profile.accountId || loading) return;
@@ -157,7 +175,12 @@ export default function PlayerProfile({ profile, player, loading, personalSummar
         <span><b>{loading && !snapshot ? '…' : effectivePersonal?.played ?? 0}</b> heroes played</span>
         <span><b>{loading && !snapshot ? '…' : effectivePersonal?.learning ?? 0}</b> low / learning</span>
       </div>
-      {noPublicMatches && <div className="profile-availability-note">No configured public provider returned usable match history for this account. Dota 2's “Expose Public Match Data” setting controls public history; matches played after it is enabled should begin appearing. DotaSage can still use public identity plus objective draft/meta tools without personal history.</div>}
+      {noPublicMatches && <div className="profile-availability-note">
+        {player?.profile?.fh_unavailable
+          ? 'OpenDota currently flags this account’s full match history as unavailable. Enable Dota 2’s “Expose Public Match Data”; matches played after it is enabled should begin appearing.'
+          : 'No configured public provider returned usable match history for this account. Dota 2’s “Expose Public Match Data” setting controls public history; matches played after it is enabled should begin appearing.'}
+        {autoRefreshQueued ? ' DotaSage also queued a public-data refresh for this account.' : ''} Objective draft/meta tools still work without personal history.
+      </div>}
       <div className="profile-open-hint">VIEW PROFILE · HERO HISTORY · RECENT MATCHES <b>→</b></div>
     </section>
   </>;
