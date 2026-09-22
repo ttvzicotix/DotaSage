@@ -85,12 +85,12 @@ export default function ProfileModal({ open, onClose, profile, player, winLoss, 
         <div className="profile-tabs"><button className={tab==='overview'?'active':''} onClick={()=>setTab('overview')}>OVERVIEW</button><button className={tab==='history'?'active':''} onClick={()=>setTab('history')}>ALL PUBLIC MATCHES <span>{historyLoading ? '…' : allMatches.length ? allMatches.length.toLocaleString() : ''}</span></button></div>
 
         <div className="profile-stat-grid v07-profile-stats">
-          <div><span>OPEN DOTA W/L</span><strong>{total ? total.toLocaleString() : '—'}</strong><small>/wl indexed results</small></div>
-          <div><span>WINS</span><strong>{winLoss?.win != null ? Number(winLoss.win).toLocaleString() : '—'}</strong><small>OpenDota /wl</small></div>
-          <div><span>LOSSES</span><strong>{winLoss?.lose != null ? Number(winLoss.lose).toLocaleString() : '—'}</strong><small>OpenDota /wl</small></div>
+          <div><span>INDEXED W/L</span><strong>{total ? total.toLocaleString() : '—'}</strong><small>/wl indexed results</small></div>
+          <div><span>WINS</span><strong>{winLoss?.win != null ? Number(winLoss.win).toLocaleString() : '—'}</strong><small>public W/L source</small></div>
+          <div><span>LOSSES</span><strong>{winLoss?.lose != null ? Number(winLoss.lose).toLocaleString() : '—'}</strong><small>public W/L source</small></div>
           <div><span>WIN RATE</span><strong>{wr == null ? '—' : `${wr.toFixed(1)}%`}</strong><small>indexed W/L</small></div>
-          <div><span>HERO HISTORY</span><strong>{heroHistoryGames ? heroHistoryGames.toLocaleString() : '—'}</strong><small>sum of /heroes games</small></div>
-          <div><span>PUBLIC MATCH ROWS</span><strong>{historyLoading ? '…' : allMatches.length ? allMatches.length.toLocaleString() : '—'}</strong><small>{publicCoverage == null ? 'loaded from /matches' : `${publicCoverage.toFixed(0)}% of /wl count`}</small></div>
+          <div><span>HERO HISTORY</span><strong>{heroHistoryGames ? heroHistoryGames.toLocaleString() : '—'}</strong><small>indexed hero history</small></div>
+          <div><span>PUBLIC MATCH ROWS</span><strong>{historyLoading ? '…' : allMatches.length ? allMatches.length.toLocaleString() : '—'}</strong><small>{publicCoverage == null ? 'loaded public rows' : `${publicCoverage.toFixed(0)}% of /wl count`}</small></div>
           <div><span>RECENT</span><strong>{recentSummary?.winRate == null ? '—' : `${recentSummary.winRate.toFixed(0)}%`}</strong><small>last {recentSummary?.count || 0}</small></div>
           <div><span>K / D / A</span><strong>{recentSummary?.kda || '—'}</strong><small>recent average</small></div>
         </div>
@@ -117,13 +117,13 @@ export default function ProfileModal({ open, onClose, profile, player, winLoss, 
           </section>
         </div> : <section className="full-history-panel">
           <div className="history-toolbar">
-            <div><div className="eyebrow">PUBLIC HISTORY</div><h3>All match rows OpenDota currently returns</h3><p>{historyLoading ? 'Loading history in pages…' : historyError ? 'Full history request failed; recent and hero history are still available.' : allMatches.length ? `${allSummary.count.toLocaleString()} rows loaded · ${allSummary.wr?.toFixed(1) ?? '—'}% WR · ${allSummary.kda} K/D/A across rows with detailed stats.` : 'No full-history rows returned yet.'}</p></div>
+            <div><div className="eyebrow">PUBLIC HISTORY</div><h3>All public match rows DotaSage currently returns</h3><p>{historyLoading ? 'Loading history in pages…' : historyError ? 'Full public history request failed; recent and hero history may still be available.' : allMatches.length ? `${allSummary.count.toLocaleString()} rows loaded · ${allSummary.wr?.toFixed(1) ?? '—'}% WR · ${allSummary.kda} K/D/A across rows with detailed stats.` : 'No full-history rows returned yet.'}</p></div>
             <div className="history-controls"><input value={historyQuery} onChange={e=>{setHistoryQuery(e.target.value);setVisibleCount(100);}} placeholder="Filter by hero…" /><button className={historyFilter==='all'?'active':''} onClick={()=>setHistoryFilter('all')}>ALL</button><button className={historyFilter==='win'?'active':''} onClick={()=>setHistoryFilter('win')}>WINS</button><button className={historyFilter==='loss'?'active':''} onClick={()=>setHistoryFilter('loss')}>LOSSES</button></div>
           </div>
           <div className="history-summary-strip"><span><b>{allSummary.wins.toLocaleString()}</b> wins in loaded rows</span><span><b>{allSummary.losses.toLocaleString()}</b> losses</span><span><b>{allSummary.gpm || '—'}</b> avg GPM*</span><span><b>{allSummary.xpm || '—'}</b> avg XPM*</span><small>*only rows where OpenDota includes those detailed fields</small></div>
           <div className="all-match-list">{filteredHistory.slice(0, visibleCount).map(match => <MatchRow key={match.match_id} match={match} hero={byId.get(Number(match.hero_id))} />)}{visibleCount < filteredHistory.length && <button className="load-more-history" onClick={()=>setVisibleCount(v=>v+100)}>SHOW 100 MORE · {filteredHistory.length-visibleCount} REMAINING</button>}</div>
         </section>}
-        <div className="profile-privacy-note">OpenDota exposes separate player W/L, hero-history, recent-match, and player-match endpoints, so their counts can legitimately differ. DotaSage labels each source instead of pretending one number is your definitive client lifetime total. Full history loads only when you open this profile.</div>
+        <div className="profile-privacy-note">DotaSage can combine public player data from multiple providers, and those providers may index different amounts of history. Counts can therefore differ. The app keeps those limitations visible instead of treating one public index as a definitive client lifetime total. Full history loads only when you open this profile.</div>
       </section>
     </div>
   );
