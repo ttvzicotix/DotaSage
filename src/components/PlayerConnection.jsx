@@ -1,15 +1,29 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fetchLocalGameState } from '../services/localGsi';
+import { searchPlayers } from '../services/playerSearch';
 import { forgetAllPlayerSnapshots, listRememberedPlayers } from '../services/playerStorage';
 import { dotaIdInputKind, normalizeDotaAccountId } from '../utils/dotaAccountId';
+
+function lastSeenLabel(value) {
+  if (!value) return 'activity unknown';
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return 'activity unknown';
+  const days = Math.max(0, Math.floor((Date.now() - time) / 86400000));
+  if (days === 0) return 'played recently';
+  if (days === 1) return 'last match yesterday';
+  if (days < 30) return `last match ${days}d ago`;
+  return `last match ${Math.floor(days / 30)}mo ago`;
+}
 
 export default function PlayerConnection({ accountId, source, onConnect, onForget }) {
   const [value, setValue] = useState(accountId || '');
   const [status, setStatus] = useState('');
   const [detecting, setDetecting] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState([]);
   const [remembered, setRemembered] = useState(() => listRememberedPlayers());
 
-  useEffect(() => { setValue(accountId || ''); }, [accountId]);
+  useEffect(() => { setValue(accountId || ''); setResults([]); }, [accountId]);
   useEffect(() => { setRemembered(listRememberedPlayers()); }, [accountId]);
 
   const otherRemembered = useMemo(
@@ -18,7 +32,7 @@ export default function PlayerConnection({ accountId, source, onConnect, onForge
   );
 
   async function detect(silent = false) {
-    if (!silent) setStatus('Checking the local DotaSage bridge…');
+    if (!silent) setStatus('Checking optional desktop Live Sync…');
     setDetecting(true);
     const state = await fetchLocalGameState();
     const detected = normalizeDotaAccountId(state?.player?.account_id);
@@ -30,8 +44,8 @@ export default function PlayerConnection({ accountId, source, onConnect, onForge
     }
     if (!silent) {
       setStatus(state?.bridge
-        ? 'Bridge found, but no usable player ID is in the current Dota payload yet. Enter Demo Hero or a match, then retry.'
-        : 'Local bridge not found. Start it first, or paste your Dota ID / SteamID64 below.');
+        ? 'Desktop bridge is online, but it has not exposed a player ID yet.'
+        : 'No desktop bridge detected. That is fine — ID and username search work entirely online.');
     }
   }
 
@@ -42,18 +56,54 @@ export default function PlayerConnection({ accountId, source, onConnect, onForge
     } catch {}
   }, []);
 
-  function submit(event) {
-    event.preventDefault();
-    const normalized = normalizeDotaAccountId(value);
-    if (!normalized || !onConnect?.(normalized, 'manual')) {
-      setStatus('Enter a Dota account/friend ID or a 17-digit SteamID64.');
+  async function runSearch(query) {
+    const q = String(query || '').trim();
+    if (q.length < 2) {
+      setStatus('Type at least two characters to search player names.');
+      setResults([]);
       return;
     }
-    const kind = dotaIdInputKind(value);
+    setSearching(true);
+    setStatus('Searching public Dota player records…');
+    try {
+      const rows = await searchPlayers(q);
+      setResults(rows);
+      setStatus(rows.length
+        ? `Found ${rows.length} public player${rows.length === 1 ? '' : 's'}. Pick the right profile.`
+        : 'No public player names matched that search. Try the exact Steam/Dota name or use the numeric ID.');
+    } catch {
+      setResults([]);
+      setStatus('Player-name search is temporarily unavailable. Numeric Dota IDs still work.');
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function connectId(raw, nextSource = 'manual') {
+    const normalized = normalizeDotaAccountId(raw);
+    if (!normalized || !onConnect?.(normalized, nextSource)) return false;
     setValue(normalized);
+    setResults([]);
+    const kind = dotaIdInputKind(raw);
     setStatus(kind === 'steamid64'
       ? `SteamID64 converted to Dota account ID ${normalized}. Connecting…`
       : 'Player connected on this device.');
+    return true;
+  }
+
+  function submit(event) {
+    event.preventDefault();
+    const q = String(value || '').trim();
+    if (/^\d+$/.test(q)) {
+      if (!connectId(q, 'manual')) setStatus('Enter a valid Dota account/friend ID or 17-digit SteamID64.');
+      return;
+    }
+    runSearch(q);
+  }
+
+  function chooseResult(row) {
+    if (!row?.accountId) return;
+    connectId(String(row.accountId), 'search');
   }
 
   function clearRemembered() {
@@ -65,16 +115,29 @@ export default function PlayerConnection({ accountId, source, onConnect, onForge
   return <section id="player-connection" className="player-connect glass-panel">
     <div className="player-topline"><span>PLAYER CONNECTION</span><i /></div>
     {accountId ? <div className="player-connect-active">
-      <div><small>CONNECTED DOTA ID</small><strong>{accountId}</strong><span>{source === 'live' ? 'detected from local Live Sync' : source === 'manual' ? 'entered manually' : 'saved on this device'}</span></div>
+      <div><small>CONNECTED DOTA ID</small><strong>{accountId}</strong><span>{source === 'live' ? 'detected from optional Live Sync' : source === 'search' ? 'found by player-name search' : source === 'manual' ? 'entered manually' : 'saved on this device'}</span></div>
       <button className="ghost-button" onClick={onForget}>FORGET</button>
     </div> : <>
-      <p>No DotaSage account required. Paste either your Dota account/friend ID or your 17-digit SteamID64.</p>
-      <form className="player-connect-form" onSubmit={submit}>
-        <input inputMode="numeric" pattern="[0-9]*" value={value} onChange={event => setValue(event.target.value.replace(/\D/g, ''))} placeholder="Dota ID or SteamID64" aria-label="Dota account ID or SteamID64" />
-        <button className="primary-button" type="submit">CONNECT</button>
+      <p>Search a public player name, or paste a Dota account ID / SteamID64. No DotaSage account is required.</p>
+      <form className="player-connect-form player-search-form" onSubmit={submit}>
+        <div className="player-search-input">
+          <span aria-hidden="true">⌕</span>
+          <input value={value} onChange={event => { setValue(event.target.value); setResults([]); }} placeholder="Stormy, Dota ID, or SteamID64" aria-label="Player name, Dota account ID, or SteamID64" autoComplete="off" />
+        </div>
+        <button className="primary-button" type="submit" disabled={searching}>{searching ? 'SEARCHING…' : /^\d+$/.test(String(value).trim()) ? 'CONNECT' : 'SEARCH'}</button>
       </form>
-      <button className="player-detect-button" onClick={() => detect(false)} disabled={detecting}>{detecting ? 'CHECKING LIVE SYNC…' : 'DETECT FROM LIVE SYNC'}</button>
-      <small className="player-connect-help">{status || 'No OpenDota login is required. Match history can only be returned when Dota exposes it publicly.'}</small>
+      {results.length > 0 && <div className="player-search-results" role="listbox" aria-label="Player search results">
+        {results.map(row => <button key={row.accountId} onClick={() => chooseResult(row)} role="option">
+          {row.avatar ? <img src={row.avatar} alt="" /> : <span className="search-avatar">P</span>}
+          <span className="search-result-copy"><b>{row.name}</b><small>ID {row.accountId} · {lastSeenLabel(row.lastMatchTime)}</small></span>
+          <em>CONNECT →</em>
+        </button>)}
+      </div>}
+      <div className="player-connect-secondary">
+        <button className="player-detect-button" onClick={() => detect(false)} disabled={detecting}>{detecting ? 'CHECKING…' : 'OPTIONAL DESKTOP DETECT'}</button>
+        <small>Username matches are not unique; confirm the avatar and Dota ID before connecting.</small>
+      </div>
+      <small className="player-connect-help">{status || 'Public match history still depends on the player’s Dota privacy setting.'}</small>
     </>}
     {otherRemembered.length > 0 && <div className="remembered-players">
       <div className="remembered-head"><small>REMEMBERED ON THIS DEVICE</small><button onClick={clearRemembered}>CLEAR REMEMBERED</button></div>
