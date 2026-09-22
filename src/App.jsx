@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './styles.css';
-import { CURRENT_PATCH } from './data/currentPatch';
 import { DEFAULT_PROFILE } from './data/defaultProfile';
 import { fetchHeroes, fetchHeroMatchups, fetchHeroStats, fetchPlayer, fetchPlayerHeroes, fetchPlayerWinLoss, fetchRecentMatches, fetchPlayerMatchHistory, fetchHeroDurations, fetchHeroItemPopularity, fetchItems, portraitUrl } from './services/openDota';
 import { buildPersonalScores } from './engine/playerModel';
@@ -16,6 +15,7 @@ import ProfileModal from './components/ProfileModal';
 import LegalModal from './components/LegalModal';
 import { heroSearchScore } from './data/heroAliases';
 import { fetchLocalGameState } from './services/localGsi';
+import useCurrentPatch from './hooks/useCurrentPatch';
 
 const emptyDraft = () => ({ allies: [], enemies: [], bans: [], self: null });
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -72,6 +72,7 @@ function recentSummary(matches = []) {
 }
 
 export default function App() {
+  const patch = useCurrentPatch();
   const [heroes, setHeroes] = useState([]);
   const [heroStats, setHeroStats] = useState([]);
   const [player, setPlayer] = useState(null);
@@ -125,7 +126,7 @@ export default function App() {
       finally { if (!cancelled) setRosterLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [patch.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -254,7 +255,7 @@ export default function App() {
       if (!cancelled) { setEnemyMatrix(next); setMatrixLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [draft.enemies]);
+  }, [draft.enemies, patch.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -270,7 +271,7 @@ export default function App() {
       if (!cancelled) { setDurationData(next); setDurationLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [draft.allies, draft.enemies]);
+  }, [draft.allies, draft.enemies, patch.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -295,7 +296,7 @@ export default function App() {
       } finally { if (!cancelled) setSelectedPairLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [draft.self, draft.enemies, statById]);
+  }, [draft.self, draft.enemies, statById, patch.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -309,7 +310,7 @@ export default function App() {
       finally { if (!cancelled) setItemLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [draft.self]);
+  }, [draft.self, patch.id]);
 
   useEffect(() => {
     const complete = draft.allies.length === 5 && draft.enemies.length === 5;
@@ -499,8 +500,8 @@ export default function App() {
 
   if (view === 'gameplan' && draft.self) return <div className="app-shell gameplan-shell">
     <div className="ambient-grid" />
-    <Topbar player={player} profile={DEFAULT_PROFILE} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} />
-    <GamePlan draft={draft} playerSide={playerSide} laneFilter={laneFilter} lineupRatings={lineupRatings} selectedScore={selectedScore} pairBreakdown={selectedPairs} pairLoading={selectedPairLoading} pairError={selectedPairError && !selectedPairs.some(x => x.games > 0)} positionLabel={laneLabels[laneFilter]} itemPopularity={itemPopularity} itemConstants={itemConstants} itemLoading={itemLoading} onBack={() => setView('draft')} />
+    <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} />
+    <GamePlan patch={patch} draft={draft} playerSide={playerSide} laneFilter={laneFilter} lineupRatings={lineupRatings} selectedScore={selectedScore} pairBreakdown={selectedPairs} pairLoading={selectedPairLoading} pairError={selectedPairError && !selectedPairs.some(x => x.games > 0)} positionLabel={laneLabels[laneFilter]} itemPopularity={itemPopularity} itemConstants={itemConstants} itemLoading={itemLoading} onBack={() => setView('draft')} />
     <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} profile={DEFAULT_PROFILE} player={player} winLoss={winLoss} recentMatches={recentMatches} allMatches={allMatches} historyLoading={historyLoading} historyError={historyError} playerHeroRows={playerHeroRows} heroes={heroes} recentSummary={recent} />
     <LegalModal open={legalOpen} onClose={() => setLegalOpen(false)} />
   </div>;
@@ -508,7 +509,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="ambient-grid" />
-      <Topbar player={player} profile={DEFAULT_PROFILE} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} />
+      <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} />
 
       <div className="command-layout">
         <aside className="left-rail">
