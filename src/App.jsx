@@ -528,8 +528,7 @@ export default function App() {
     setOnlineLiveEnabled(current => {
       const next = !current;
       try {
-        if (next) sessionStorage.setItem('dotasage:online-live-enabled', '1');
-        else sessionStorage.removeItem('dotasage:online-live-enabled');
+        sessionStorage.setItem('dotasage:online-live-enabled', next ? '1' : '0');
       } catch {}
       if (next) {
         setLocalDraftEnabled(false);
