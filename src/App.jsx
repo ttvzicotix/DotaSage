@@ -337,6 +337,22 @@ export default function App() {
     lastAutoPlanSignatureRef.current = '';
   }
 
+  function changePlayerSide(nextSide) {
+    if (nextSide === playerSide) return;
+    // Preserve the heroes on their physical Radiant/Dire side. Because draft
+    // state is stored as ally/enemy, changing YOUR SIDE must invert those
+    // semantic buckets instead of visually moving the entered map-side roster.
+    setDraft(current => ({
+      allies: current.enemies,
+      enemies: current.allies,
+      bans: current.bans,
+      self: null,
+    }));
+    setPlayerSide(nextSide);
+    setView('draft');
+    lastAutoPlanSignatureRef.current = '';
+  }
+
   function hardReset() {
     setDraft(emptyDraft());
     setView('draft');
@@ -388,11 +404,11 @@ export default function App() {
       <div className="command-layout">
         <aside className="left-rail">
           <PlayerProfile profile={DEFAULT_PROFILE} player={player} loading={profileLoading} personalSummary={personalSummary} winLoss={winLoss} recentSummary={recent} onOpenProfile={() => setProfileOpen(true)} />
-          <DraftBoard draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} playerSide={playerSide} onSideChange={setPlayerSide} onSwapTeams={swapTeams} />
+          <DraftBoard draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} playerSide={playerSide} onSideChange={changePlayerSide} onSwapTeams={swapTeams} />
         </aside>
 
         <main className="center-stage">
-          <HeroGrid allHeroes={heroes} roleHeroes={roleEligibleHeroes} heroes={filteredHeroes} scores={scoreBundle.scores} stateForHero={stateForHero} onAction={actOnHero} query={query} setQuery={setQuery} attr={attr} setAttr={setAttr} loadingLive={matrixLoading || rosterLoading} laneFilter={laneFilter} playerSide={playerSide} />
+          <HeroGrid allHeroes={heroes} roleHeroes={roleEligibleHeroes} heroes={filteredHeroes} scores={scoreBundle.scores} stateForHero={stateForHero} onAction={actOnHero} query={query} setQuery={setQuery} attr={attr} setAttr={setAttr} loadingLive={matrixLoading || rosterLoading} laneFilter={laneFilter} setLaneFilter={setLaneFilter} playerSide={playerSide} />
           <RecommendationPanel recommendations={recommendations} onPick={actOnHero} draftComplete={draftComplete} allyCount={draft.allies.length} enemyCount={draft.enemies.length} laneLabel={laneLabels[laneFilter]} laneFilter={laneFilter} setLaneFilter={setLaneFilter} matrixLoading={matrixLoading} advisorMode={advisorMode} setAdvisorMode={setAdvisorMode} playerSide={playerSide} />
         </main>
 
