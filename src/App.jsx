@@ -13,6 +13,7 @@ import GamePlan from './components/GamePlan';
 import Topbar from './components/Topbar';
 import ProfileModal from './components/ProfileModal';
 import LegalModal from './components/LegalModal';
+import AboutModal from './components/AboutModal';
 import { heroSearchScore } from './data/heroAliases';
 import { fetchLocalGameState } from './services/localGsi';
 import { fetchOnlineLive } from './services/onlineLive';
@@ -104,6 +105,7 @@ export default function App() {
   const [advisorMode, setAdvisorMode] = useState('best');
   const [profileOpen, setProfileOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [localDraftEnabled, setLocalDraftEnabled] = useState(() => {
     try { return sessionStorage.getItem('dotasage:live-sync-enabled') === '1'; }
     catch { return false; }
@@ -570,6 +572,7 @@ export default function App() {
     setPlayerSide('radiant');
     setProfileOpen(false);
     setLegalOpen(false);
+    setAboutOpen(false);
     try {
       ['dotasage:observed-enemy-items','dotasage:match-minute','dotasage:match-state','dotasage:match-clock-start','dotasage:match-signature','dotasage:lane-overrides','dotasage:manual-timer-running','dotasage:manual-timer-base','dotasage:manual-timer-anchor'].forEach(key => sessionStorage.removeItem(key));
     } catch {}
@@ -597,16 +600,17 @@ export default function App() {
 
   if (view === 'gameplan' && draft.self) return <div className="app-shell gameplan-shell">
     <div className="ambient-grid" />
-    <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} />
+    <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
     <GamePlan patch={patch} onlineLiveMatch={onlineLiveMatch} draft={draft} playerSide={playerSide} laneFilter={laneFilter} lineupRatings={lineupRatings} selectedScore={selectedScore} pairBreakdown={selectedPairs} pairLoading={selectedPairLoading} pairError={selectedPairError && !selectedPairs.some(x => x.games > 0)} positionLabel={laneLabels[laneFilter]} itemPopularity={itemPopularity} itemConstants={itemConstants} itemLoading={itemLoading} onBack={() => setView('draft')} />
     <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} profile={DEFAULT_PROFILE} player={player} winLoss={winLoss} recentMatches={recentMatches} allMatches={allMatches} historyLoading={historyLoading} historyError={historyError} playerHeroRows={playerHeroRows} heroes={heroes} recentSummary={recent} />
     <LegalModal open={legalOpen} onClose={() => setLegalOpen(false)} />
+    <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
   </div>;
 
   return (
     <div className="app-shell">
       <div className="ambient-grid" />
-      <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} />
+      <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
 
       <div className="command-layout">
         <aside className="left-rail">
@@ -623,6 +627,10 @@ export default function App() {
       </div>
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} profile={DEFAULT_PROFILE} player={player} winLoss={winLoss} recentMatches={recentMatches} allMatches={allMatches} historyLoading={historyLoading} historyError={historyError} playerHeroRows={playerHeroRows} heroes={heroes} recentSummary={recent} />
       <LegalModal open={legalOpen} onClose={() => setLegalOpen(false)} />
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <button className="built-by-zicotix" onClick={() => setAboutOpen(true)} title="About the builder">
+        <span>BUILT BY</span><b>ZICOTIX</b><i>↗</i>
+      </button>
     </div>
   );
 }
