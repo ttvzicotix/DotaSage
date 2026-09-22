@@ -89,7 +89,9 @@ function AdvisorSignals({ entry, enemyCount, patch }) {
     ['SYNERGY', Math.max(0, Math.min(10, 5 + score.synergyScore / 2)), score.synergySource === 'empirical'
       ? `${score.synergyScore >= 0 ? '+' : ''}${score.synergyScore.toFixed(1)} empirical ally fit · ${Number(score.synergyGames || 0).toLocaleString()} samples`
       : `${score.synergyScore >= 0 ? '+' : ''}${score.synergyScore.toFixed(1)} modeled ally fit · awaiting empirical pair data`],
-    ['META', score.metaScore, `patch ${patch?.id || 'current'} public baseline`],
+    ['META', score.metaScore, score.metaGames
+      ? `${score.metaProvider || 'STRATZ'} ${score.metaPosition ? score.metaPosition.replace('POSITION_', 'Pos ') : 'role'} · ${Number(score.metaGames).toLocaleString()} matches · patch ${patch?.id || 'current'}`
+      : `${score.metaProvider || 'public'} overall baseline · patch ${patch?.id || 'current'}`],
   ];
   return <div className="advisor-signal-rail">
     <div className="advisor-signal-title">
