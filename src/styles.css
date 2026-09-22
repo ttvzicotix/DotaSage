@@ -2119,3 +2119,88 @@ h1,h2,h3,.brand-mark strong,.player-name,.primary-pick-title strong,.compact-nam
   .compact-pick{grid-template-columns:20px 48px minmax(72px,1fr) 38px 36px 12px!important}
   .quick-target-picker button{min-height:34px;font-size:8px}
 }
+
+
+/* v0.21 secondary sync + game-plan provenance ---------------------------- */
+.draft-sync-advanced{position:relative}
+.draft-sync-advanced>summary{
+  list-style:none;
+  cursor:pointer;
+  border:1px solid rgba(255,255,255,.065);
+  border-radius:999px;
+  padding:5px 8px;
+  background:rgba(255,255,255,.015);
+  color:#727e90;
+  font:700 7px Barlow Condensed;
+  letter-spacing:.06em;
+}
+.draft-sync-advanced>summary::-webkit-details-marker{display:none}
+.draft-sync-advanced[open]>summary{color:#aeb9c8;border-color:rgba(121,216,255,.16)}
+.draft-sync-advanced>div{
+  position:absolute;
+  z-index:40;
+  right:0;
+  top:34px;
+  width:250px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:10px;
+  align-items:center;
+  padding:10px;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:14px;
+  background:rgba(11,13,19,.985);
+  box-shadow:0 18px 52px rgba(0,0,0,.52);
+}
+.draft-sync-advanced>div>span b{
+  display:block;color:#c7d0dd;font:800 8px Barlow Condensed;letter-spacing:.06em;
+}
+.draft-sync-advanced>div>span small{
+  display:block;margin-top:2px;color:#687487;font-size:6.8px;line-height:1.35;
+}
+.draft-sync-advanced .live-draft-toggle{white-space:nowrap}
+.gpv2-provenance{
+  display:grid;
+  grid-template-columns:1.4fr 1fr 1fr .65fr 1fr;
+  gap:6px;
+  margin:8px 0;
+  padding:7px;
+  border:1px solid rgba(255,255,255,.055);
+  border-radius:16px;
+  background:linear-gradient(100deg,rgba(166,108,255,.028),rgba(121,216,255,.014),rgba(255,255,255,.008));
+}
+.gpv2-provenance>div{
+  min-width:0;
+  padding:5px 7px;
+  border-radius:10px;
+  background:rgba(255,255,255,.012);
+}
+.gpv2-provenance span{
+  display:block;
+  color:#667285;
+  font:700 6.4px Barlow Condensed;
+  letter-spacing:.08em;
+}
+.gpv2-provenance strong{
+  display:inline-block;
+  margin-top:2px;
+  color:#b8c1ce;
+  font:700 8px Barlow Condensed;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:100%;
+}
+.gpv2-provenance small{
+  display:block;margin-top:1px;color:#677284;font-size:6.2px;
+}
+.gpv2-provenance .evidence-high{color:#8ee8a6}
+.gpv2-provenance .evidence-med{color:#e7c47c}
+.gpv2-provenance .evidence-low{color:#d7898e}
+@media(max-width:900px){
+  .gpv2-provenance{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:620px){
+  .draft-sync-advanced>div{right:-42px;width:235px}
+  .gpv2-provenance{grid-template-columns:1fr 1fr}
+}
