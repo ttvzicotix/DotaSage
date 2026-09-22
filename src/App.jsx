@@ -15,6 +15,7 @@ import ProfileModal from './components/ProfileModal';
 import LegalModal from './components/LegalModal';
 import { heroSearchScore } from './data/heroAliases';
 import { fetchLocalGameState } from './services/localGsi';
+import { fetchOnlineLive } from './services/onlineLive';
 import useCurrentPatch from './hooks/useCurrentPatch';
 
 const emptyDraft = () => ({ allies: [], enemies: [], bans: [], self: null });
@@ -108,6 +109,12 @@ export default function App() {
     catch { return false; }
   });
   const [localDraftStatus, setLocalDraftStatus] = useState({ bridge: false, connected: false, active: false, gameState: null });
+  const [onlineLiveEnabled, setOnlineLiveEnabled] = useState(() => {
+    try { return sessionStorage.getItem('dotasage:online-live-enabled') === '1'; }
+    catch { return false; }
+  });
+  const [onlineLiveStatus, setOnlineLiveStatus] = useState({ searching: false, found: false, provider: null, scannedGames: 0, matchId: null, error: null });
+  const [onlineLiveMatch, setOnlineLiveMatch] = useState(null);
   const lastAutoPlanSignatureRef = useRef('');
   const lastLocalDraftSignatureRef = useRef('');
 
@@ -162,6 +169,65 @@ export default function App() {
     })();
     return () => { cancelled = true; };
   }, [profileOpen, allMatches.length]);
+
+  useEffect(() => {
+    if (!onlineLiveEnabled || !DEFAULT_PROFILE.accountId || !heroes.length) {
+      if (!onlineLiveEnabled) {
+        setOnlineLiveStatus({ searching: false, found: false, provider: null, scannedGames: 0, matchId: null, error: null });
+        setOnlineLiveMatch(null);
+      }
+      return undefined;
+    }
+
+    let cancelled = false;
+    let timer = null;
+
+    const scan = async () => {
+      setOnlineLiveStatus(current => ({ ...current, searching: true, error: null }));
+      const result = await fetchOnlineLive(DEFAULT_PROFILE.accountId);
+      if (cancelled) return;
+
+      const match = result?.found ? result.match : null;
+      setOnlineLiveMatch(match || null);
+      setOnlineLiveStatus({
+        searching: false,
+        found: Boolean(match),
+        provider: match?.provider || null,
+        scannedGames: Number(result?.scannedGames || 0),
+        matchId: match?.matchId || null,
+        error: result?.error || null,
+      });
+
+      if (!match) return;
+      const radiantHeroes = (match.radiant || []).map(id => heroById.get(Number(id))).filter(Boolean).slice(0, 5);
+      const direHeroes = (match.dire || []).map(id => heroById.get(Number(id))).filter(Boolean).slice(0, 5);
+      if (!radiantHeroes.length && !direHeroes.length) return;
+
+      const resolvedSide = match.selfSide === 'dire' || match.selfSide === 'radiant' ? match.selfSide : playerSide;
+      const allies = resolvedSide === 'dire' ? direHeroes : radiantHeroes;
+      const enemies = resolvedSide === 'dire' ? radiantHeroes : direHeroes;
+      const selfHero = match.selfHeroId ? heroById.get(Number(match.selfHeroId)) : null;
+
+      if (resolvedSide !== playerSide) setPlayerSide(resolvedSide);
+      setDraft(current => ({
+        allies,
+        enemies,
+        bans: current.bans,
+        self: selfHero && allies.some(hero => hero.id === selfHero.id)
+          ? selfHero
+          : current.self && allies.some(hero => hero.id === current.self.id)
+            ? current.self
+            : null,
+      }));
+    };
+
+    scan();
+    timer = window.setInterval(scan, 8000);
+    return () => {
+      cancelled = true;
+      if (timer) window.clearInterval(timer);
+    };
+  }, [onlineLiveEnabled, heroes, heroById, playerSide]);
 
   useEffect(() => {
     if (!localDraftEnabled || view !== 'draft' || !heroes.length) {
@@ -448,9 +514,31 @@ export default function App() {
     lastAutoPlanSignatureRef.current = '';
   }
 
+  function toggleOnlineLive() {
+    setOnlineLiveEnabled(current => {
+      const next = !current;
+      try {
+        if (next) sessionStorage.setItem('dotasage:online-live-enabled', '1');
+        else sessionStorage.removeItem('dotasage:online-live-enabled');
+      } catch {}
+      if (next) {
+        setLocalDraftEnabled(false);
+        try { sessionStorage.removeItem('dotasage:live-sync-enabled'); } catch {}
+      } else {
+        setOnlineLiveMatch(null);
+      }
+      return next;
+    });
+  }
+
   function toggleLocalDraftSync() {
     setLocalDraftEnabled(current => {
       const next = !current;
+      if (next) {
+        setOnlineLiveEnabled(false);
+        setOnlineLiveMatch(null);
+        try { sessionStorage.removeItem('dotasage:online-live-enabled'); } catch {}
+      }
       try {
         if (next) sessionStorage.setItem('dotasage:live-sync-enabled', '1');
         else sessionStorage.removeItem('dotasage:live-sync-enabled');
@@ -501,7 +589,7 @@ export default function App() {
   if (view === 'gameplan' && draft.self) return <div className="app-shell gameplan-shell">
     <div className="ambient-grid" />
     <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} />
-    <GamePlan patch={patch} draft={draft} playerSide={playerSide} laneFilter={laneFilter} lineupRatings={lineupRatings} selectedScore={selectedScore} pairBreakdown={selectedPairs} pairLoading={selectedPairLoading} pairError={selectedPairError && !selectedPairs.some(x => x.games > 0)} positionLabel={laneLabels[laneFilter]} itemPopularity={itemPopularity} itemConstants={itemConstants} itemLoading={itemLoading} onBack={() => setView('draft')} />
+    <GamePlan patch={patch} onlineLiveMatch={onlineLiveMatch} draft={draft} playerSide={playerSide} laneFilter={laneFilter} lineupRatings={lineupRatings} selectedScore={selectedScore} pairBreakdown={selectedPairs} pairLoading={selectedPairLoading} pairError={selectedPairError && !selectedPairs.some(x => x.games > 0)} positionLabel={laneLabels[laneFilter]} itemPopularity={itemPopularity} itemConstants={itemConstants} itemLoading={itemLoading} onBack={() => setView('draft')} />
     <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} profile={DEFAULT_PROFILE} player={player} winLoss={winLoss} recentMatches={recentMatches} allMatches={allMatches} historyLoading={historyLoading} historyError={historyError} playerHeroRows={playerHeroRows} heroes={heroes} recentSummary={recent} />
     <LegalModal open={legalOpen} onClose={() => setLegalOpen(false)} />
   </div>;
@@ -514,7 +602,7 @@ export default function App() {
       <div className="command-layout">
         <aside className="left-rail">
           <PlayerProfile profile={DEFAULT_PROFILE} player={player} loading={profileLoading} personalSummary={personalSummary} winLoss={winLoss} recentSummary={recent} onOpenProfile={() => setProfileOpen(true)} />
-          <DraftBoard draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; lastLocalDraftSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} playerSide={playerSide} onSideChange={changePlayerSide} onSwapTeams={swapTeams} liveDraftEnabled={localDraftEnabled} liveDraftStatus={localDraftStatus} onToggleLiveDraft={toggleLocalDraftSync} />
+          <DraftBoard draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; lastLocalDraftSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} playerSide={playerSide} onSideChange={changePlayerSide} onSwapTeams={swapTeams} onlineLiveEnabled={onlineLiveEnabled} onlineLiveStatus={onlineLiveStatus} onToggleOnlineLive={toggleOnlineLive} liveDraftEnabled={localDraftEnabled} liveDraftStatus={localDraftStatus} onToggleLiveDraft={toggleLocalDraftSync} />
         </aside>
 
         <main className="center-stage">
