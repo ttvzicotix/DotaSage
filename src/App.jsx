@@ -15,6 +15,7 @@ import Topbar from './components/Topbar';
 import ProfileModal from './components/ProfileModal';
 import LegalModal from './components/LegalModal';
 import { heroSearchScore } from './data/heroAliases';
+import { fetchLocalGameState } from './services/localGsi';
 
 const emptyDraft = () => ({ allies: [], enemies: [], bans: [], self: null });
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -42,6 +43,13 @@ function matchesLane(hero, lane) {
   if (lane === 'jungle') return lanes.includes('jungle') || hints.includes('jungle');
   if (lane === 'roam') return lanes.includes('roam') || (isSupport && (has('escape') || has('initiator')));
   return true;
+}
+
+function localPlayerSide(state) {
+  const raw = String(state?.player?.team_name ?? state?.player?.team ?? '').toLowerCase();
+  if (raw.includes('radiant') || raw === '2' || raw === 'team2' || raw.includes('goodguys')) return 'radiant';
+  if (raw.includes('dire') || raw === '3' || raw === 'team3' || raw.includes('badguys')) return 'dire';
+  return null;
 }
 
 function recentSummary(matches = []) {
@@ -94,9 +102,16 @@ export default function App() {
   const [advisorMode, setAdvisorMode] = useState('best');
   const [profileOpen, setProfileOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState(false);
+  const [localDraftEnabled, setLocalDraftEnabled] = useState(() => {
+    try { return sessionStorage.getItem('dotasage:live-sync-enabled') === '1'; }
+    catch { return false; }
+  });
+  const [localDraftStatus, setLocalDraftStatus] = useState({ bridge: false, connected: false, active: false, gameState: null });
   const lastAutoPlanSignatureRef = useRef('');
+  const lastLocalDraftSignatureRef = useRef('');
 
   const statById = useMemo(() => new Map(heroStats.map(s => [Number(s.id), s])), [heroStats]);
+  const heroById = useMemo(() => new Map(heroes.map(hero => [Number(hero.id), hero])), [heroes]);
 
   useEffect(() => {
     let cancelled = false;
@@ -146,6 +161,85 @@ export default function App() {
     })();
     return () => { cancelled = true; };
   }, [profileOpen, allMatches.length]);
+
+  useEffect(() => {
+    if (!localDraftEnabled || view !== 'draft' || !heroes.length) {
+      if (!localDraftEnabled) setLocalDraftStatus({ bridge: false, connected: false, active: false, gameState: null });
+      return undefined;
+    }
+
+    let cancelled = false;
+    let timer = null;
+
+    const syncLocalDraft = async () => {
+      const state = await fetchLocalGameState();
+      if (cancelled) return;
+
+      const live = state?.draft;
+      const radiantIds = Array.isArray(live?.radiant?.picks) ? live.radiant.picks : [];
+      const direIds = Array.isArray(live?.dire?.picks) ? live.dire.picks : [];
+      const radiantBanIds = Array.isArray(live?.radiant?.bans) ? live.radiant.bans : [];
+      const direBanIds = Array.isArray(live?.dire?.bans) ? live.dire.bans : [];
+      const hasDraft = radiantIds.length + direIds.length + radiantBanIds.length + direBanIds.length > 0;
+
+      setLocalDraftStatus({
+        bridge: Boolean(state?.bridge),
+        connected: Boolean(state?.connected),
+        active: Boolean(hasDraft),
+        gameState: state?.map?.game_state || null,
+      });
+      if (!hasDraft) return;
+
+      const radiantHeroes = radiantIds.map(id => heroById.get(Number(id))).filter(Boolean).slice(0, 5);
+      const direHeroes = direIds.map(id => heroById.get(Number(id))).filter(Boolean).slice(0, 5);
+      const bans = [...radiantBanIds, ...direBanIds]
+        .map(id => heroById.get(Number(id)))
+        .filter(Boolean)
+        .filter((hero, index, rows) => rows.findIndex(row => row.id === hero.id) === index);
+
+      const localHero = state?.hero?.id
+        ? heroById.get(Number(state.hero.id))
+        : heroes.find(candidate => candidate.name === state?.hero?.name) || null;
+
+      let resolvedSide = localPlayerSide(state);
+      if (!resolvedSide && localHero) {
+        if (radiantHeroes.some(hero => hero.id === localHero.id)) resolvedSide = 'radiant';
+        else if (direHeroes.some(hero => hero.id === localHero.id)) resolvedSide = 'dire';
+      }
+      resolvedSide ||= playerSide;
+
+      const allies = resolvedSide === 'dire' ? direHeroes : radiantHeroes;
+      const enemies = resolvedSide === 'dire' ? radiantHeroes : direHeroes;
+      const self = localHero && allies.some(hero => hero.id === localHero.id) ? localHero : null;
+
+      const signature = [
+        resolvedSide,
+        radiantIds.join(','),
+        direIds.join(','),
+        radiantBanIds.join(','),
+        direBanIds.join(','),
+        self?.id || 0,
+      ].join('|');
+
+      if (signature === lastLocalDraftSignatureRef.current) return;
+      lastLocalDraftSignatureRef.current = signature;
+
+      if (resolvedSide !== playerSide) setPlayerSide(resolvedSide);
+      setDraft(current => ({
+        allies,
+        enemies,
+        bans,
+        self: self || (current.self && allies.some(hero => hero.id === current.self.id) ? current.self : null),
+      }));
+    };
+
+    syncLocalDraft();
+    timer = window.setInterval(syncLocalDraft, 1200);
+    return () => {
+      cancelled = true;
+      if (timer) window.clearInterval(timer);
+    };
+  }, [localDraftEnabled, view, heroes, heroById, playerSide]);
 
   useEffect(() => {
     let cancelled = false;
@@ -353,6 +447,21 @@ export default function App() {
     lastAutoPlanSignatureRef.current = '';
   }
 
+  function toggleLocalDraftSync() {
+    setLocalDraftEnabled(current => {
+      const next = !current;
+      try {
+        if (next) sessionStorage.setItem('dotasage:live-sync-enabled', '1');
+        else sessionStorage.removeItem('dotasage:live-sync-enabled');
+      } catch {}
+      if (!next) {
+        lastLocalDraftSignatureRef.current = '';
+        setLocalDraftStatus({ bridge: false, connected: false, active: false, gameState: null });
+      }
+      return next;
+    });
+  }
+
   function hardReset() {
     setDraft(emptyDraft());
     setView('draft');
@@ -404,7 +513,7 @@ export default function App() {
       <div className="command-layout">
         <aside className="left-rail">
           <PlayerProfile profile={DEFAULT_PROFILE} player={player} loading={profileLoading} personalSummary={personalSummary} winLoss={winLoss} recentSummary={recent} onOpenProfile={() => setProfileOpen(true)} />
-          <DraftBoard draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} playerSide={playerSide} onSideChange={changePlayerSide} onSwapTeams={swapTeams} />
+          <DraftBoard draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; lastLocalDraftSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} playerSide={playerSide} onSideChange={changePlayerSide} onSwapTeams={swapTeams} liveDraftEnabled={localDraftEnabled} liveDraftStatus={localDraftStatus} onToggleLiveDraft={toggleLocalDraftSync} />
         </aside>
 
         <main className="center-stage">
