@@ -1,12 +1,15 @@
+import { normalizeDotaAccountId } from '../utils/dotaAccountId';
+
 // Public default profile seed.
 // Never hardcode a real account ID, player name, private preference, or local data here.
 function storedAccountId() {
   if (typeof window === 'undefined') return null;
   try {
-    const value = window.localStorage.getItem('dotasage:player-account-id');
-    if (!/^\d{1,10}$/.test(value || '')) return null;
-    const numeric = Number(value);
-    return Number.isSafeInteger(numeric) && numeric > 0 && numeric <= 4294967295 ? value : null;
+    const raw = window.localStorage.getItem('dotasage:player-account-id');
+    const normalized = normalizeDotaAccountId(raw);
+    if (!normalized) return null;
+    if (raw !== normalized) window.localStorage.setItem('dotasage:player-account-id', normalized);
+    return normalized;
   } catch {
     return null;
   }
