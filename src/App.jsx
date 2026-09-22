@@ -129,15 +129,15 @@ export default function App() {
   const [onlineLiveMatch, setOnlineLiveMatch] = useState(null);
   const [providerStatus, setProviderStatus] = useState(null);
   const [copyDraftStatus, setCopyDraftStatus] = useState('');
+  const [draftSessionHydrated, setDraftSessionHydrated] = useState(false);
   const lastAutoPlanSignatureRef = useRef('');
-  const draftSessionReadyRef = useRef(false);
   const lastLocalDraftSignatureRef = useRef('');
 
   const statById = useMemo(() => new Map(heroStats.map(s => [Number(s.id), s])), [heroStats]);
   const heroById = useMemo(() => new Map(heroes.map(hero => [Number(hero.id), hero])), [heroes]);
 
   useEffect(() => {
-    if (draftSessionReadyRef.current || !heroes.length) return;
+    if (draftSessionHydrated || !heroes.length) return;
 
     let payload = null;
     try {
@@ -169,11 +169,11 @@ export default function App() {
       }
     }
 
-    draftSessionReadyRef.current = true;
-  }, [heroes, heroById]);
+    setDraftSessionHydrated(true);
+  }, [heroes, heroById, draftSessionHydrated]);
 
   useEffect(() => {
-    if (!draftSessionReadyRef.current) return;
+    if (!draftSessionHydrated) return;
     try {
       sessionStorage.setItem('dotasage:draft-session', JSON.stringify(draftPayload({
         draft,
@@ -182,7 +182,7 @@ export default function App() {
         advisorMode,
       })));
     } catch {}
-  }, [draft, playerSide, laneFilter, advisorMode]);
+  }, [draft, playerSide, laneFilter, advisorMode, draftSessionHydrated]);
 
   useEffect(() => {
     let cancelled = false;
@@ -710,7 +710,7 @@ export default function App() {
     setAboutOpen(false);
     try {
       ['dotasage:observed-enemy-items','dotasage:match-minute','dotasage:match-state','dotasage:match-clock-start','dotasage:match-signature','dotasage:lane-overrides','dotasage:manual-timer-running','dotasage:manual-timer-base','dotasage:manual-timer-anchor','dotasage:draft-session'].forEach(key => sessionStorage.removeItem(key));
-      if (window.location.hash.includes('draft=')) history.replaceState(null, '', window.location.pathname + window.location.search);
+      if (window.location.hash.includes('draft=')) window.history.replaceState(null, '', window.location.pathname + window.location.search);
     } catch {}
   }
 
