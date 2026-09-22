@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ScorePill from './ScorePill';
 import MatchupAtlas from './MatchupAtlas';
-import { CURRENT_PATCH } from '../data/currentPatch';
 import { fetchRecentMatches, fetchMatch, itemImageUrl } from '../services/openDota';
 import { DEFAULT_PROFILE } from '../data/defaultProfile';
 import { buildLaneMap, positionName } from '../engine/lanePrediction';
@@ -553,6 +552,7 @@ function CompactPostMatch({ hero }) {
 }
 
 export default function GamePlan({
+  patch,
   draft,
   playerSide = 'radiant',
   laneFilter = 'all',
@@ -636,7 +636,7 @@ export default function GamePlan({
   const ratingMap = side => side === playerSide ? lineupRatings?.allies : lineupRatings?.enemies;
 
   return <main className="gpv2 game-plan">
-    <div className="gpv2-toolbar"><button onClick={onBack}>← BACK TO DRAFT</button><span>GAME PLAN · PATCH {CURRENT_PATCH.id}</span><button onClick={() => document.getElementById('post-match-review')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>POST-MATCH ↓</button></div>
+    <div className="gpv2-toolbar"><button onClick={onBack}>← BACK TO DRAFT</button><span>GAME PLAN · PATCH {patch?.id || '—'}</span><button onClick={() => document.getElementById('post-match-review')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>POST-MATCH ↓</button></div>
 
     <section className="gpv2-hero-brief">
       <img src={hero.portrait} alt="" />
