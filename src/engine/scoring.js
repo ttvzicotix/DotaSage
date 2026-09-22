@@ -44,6 +44,30 @@ export function aggregateEnemyScore(pairScores) {
   return clamp(adjustedPctSum, -10, 10);
 }
 
+export function pairSynergyScore({ pairWins, pairGames, candidateBase = 0.5, allyBase = 0.5 }) {
+  if (!pairGames) return { score: 0, confidence: 0, advantage: 0, games: 0 };
+  const actual = pairWins / pairGames;
+  const expected = (candidateBase + allyBase) / 2;
+  const advantage = actual - expected;
+  const sampleConfidence = clamp(Math.sqrt(pairGames / 500), 0.15, 1);
+  const raw = (advantage / 0.05) * 10;
+  return {
+    score: clamp(raw * sampleConfidence, -10, 10),
+    confidence: sampleConfidence,
+    advantage,
+    actual,
+    expected,
+    games: pairGames,
+  };
+}
+
+export function aggregateSynergyScore(pairScores) {
+  const usable = pairScores.filter(x => x && x.confidence > 0 && Number.isFinite(x.advantage));
+  if (!usable.length) return 0;
+  const adjustedPctSum = usable.reduce((sum, row) => sum + (row.advantage * 100 * row.confidence), 0);
+  return clamp(adjustedPctSum, -10, 10);
+}
+
 const roleNeeds = ['carry', 'support', 'initiator', 'disabler', 'durable', 'nuker', 'pusher'];
 const hasRole = (hero, role) => (hero?.roles || []).some(r => String(r).toLowerCase() === role);
 
@@ -86,10 +110,10 @@ export function compositionFit(candidate, allies) {
   return clamp(5 + compositionSynergyScore(candidate, allies) / 2, 0, 10);
 }
 
-// Objective BEST PICK. Counter evidence is empirical from OpenDota, while our same-team
-// synergy is still modeled. Until DotaSage has an empirical ally-pair dataset, verified
-// counter evidence gets the larger share and meta is only a tiebreaker. Personal history
-// does not rank BEST PICK.
+// Objective BEST PICK. Counter evidence is empirical from the active provider.
+// Same-team synergy can be empirical when STRATZ pair data is available, with the
+// role-composition model retained as a fallback. Counter evidence keeps the larger
+// share and meta remains a tiebreaker. Personal history does not rank BEST PICK.
 export function draftFitScore({ enemyScore, synergyScore = 0, teamFit, metaScore = 5 }) {
   const counterAsTen = clamp((enemyScore + 10) / 2, 0, 10);
   const resolvedSynergy = Number.isFinite(synergyScore) ? synergyScore : ((Number(teamFit ?? 5) - 5) * 2);
