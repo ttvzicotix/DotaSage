@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import PlayerConnection from './PlayerConnection';
 import { clearPlayerCache } from '../services/openDota';
 import { forgetPlayerSnapshot, loadPlayerSnapshot, savePlayerSnapshot } from '../services/playerStorage';
+import { normalizeDotaAccountId } from '../utils/dotaAccountId';
 import '../styles/player-profile-status.css';
 
 const MEDALS = ['', 'Herald', 'Guardian', 'Crusader', 'Archon', 'Legend', 'Ancient', 'Divine', 'Immortal'];
@@ -39,10 +40,8 @@ function ageLabel(timestamp) {
 }
 
 function savePlayer(rawId, source = 'manual') {
-  const value = String(rawId ?? '').trim();
-  if (!/^\d+$/.test(value)) return false;
-  const numeric = Number(value);
-  if (!Number.isSafeInteger(numeric) || numeric <= 0 || numeric > 4294967295) return false;
+  const value = normalizeDotaAccountId(rawId);
+  if (!value) return false;
   try {
     localStorage.setItem('dotasage:player-account-id', value);
     localStorage.setItem('dotasage:player-source', source);
@@ -85,6 +84,7 @@ export default function PlayerProfile({ profile, player, loading, personalSummar
     : snapshot?.personalSummary || personalSummary;
   const effectiveRankTier = player?.rank_tier ?? snapshot?.rankTier ?? null;
   const usingSavedProfile = !player && Boolean(snapshot?.name);
+  const profileResolved = Boolean(player?.profile || player?.rank_tier || player?.mmr_estimate);
   const noPublicMatches = !loading && !liveTotalGames && !recentSummary?.count && !personalSummary?.played;
   const savedAge = snapshot?.savedAt ? ageLabel(snapshot.savedAt) : null;
   const dataLabel = loading && !snapshot
@@ -92,7 +92,7 @@ export default function PlayerProfile({ profile, player, loading, personalSummar
     : usingSavedProfile
       ? `SAVED LOCALLY${savedAge ? ` · ${savedAge}` : ''}`
       : noPublicMatches
-        ? 'PROFILE FOUND · NO PUBLIC MATCH HISTORY'
+        ? profileResolved ? 'PROFILE FOUND · MATCH HISTORY UNAVAILABLE' : 'NO PUBLIC OPENDOTA HISTORY'
         : 'OPENDOTA DATA';
 
   useEffect(() => {
@@ -150,7 +150,7 @@ export default function PlayerProfile({ profile, player, loading, personalSummar
         <span><b>{loading && !snapshot ? '…' : effectivePersonal?.played ?? 0}</b> heroes played</span>
         <span><b>{loading && !snapshot ? '…' : effectivePersonal?.learning ?? 0}</b> low / learning</span>
       </div>
-      {noPublicMatches && <div className="profile-availability-note">OpenDota identified this account but returned no public match-history data for the current requests. Objective draft tools still work; personal-history scoring may be unavailable.</div>}
+      {noPublicMatches && <div className="profile-availability-note">OpenDota did not return usable public match history for this account. No OpenDota login is required, but Dota 2's “Expose Public Match Data” setting must be enabled for future matches to be indexed. Objective draft tools still work without personal history.</div>}
       <div className="profile-open-hint">VIEW PROFILE · HERO HISTORY · RECENT MATCHES <b>→</b></div>
     </section>
   </>;
