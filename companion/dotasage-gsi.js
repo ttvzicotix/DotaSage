@@ -209,6 +209,7 @@ function sanitize(payload) {
       roshan_state: map.roshan_state ?? null,
     },
     hero: hero ? {
+      id: hero.id ?? null,
       name: hero.name ?? null,
       level: hero.level ?? null,
       health: hero.health ?? null,
