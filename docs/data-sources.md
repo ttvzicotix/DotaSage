@@ -67,3 +67,17 @@ A future provider adapter should return both the value and provenance (provider,
 ## Privacy limitation
 
 No remote provider can reliably reconstruct a player's hidden personal match history when Valve does not expose that account in public match data. Switching from OpenDota to STRATZ or the Steam Web API can improve uptime and analytics coverage, but it does not override the player's Dota privacy setting.
+
+
+## v0.20 browser-first resilience
+
+- **Automatic patch identity:** the hosted app checks Valve's official Dota 2 patch datafeed on load and every 15 minutes. When the patch number changes, patch-sensitive browser caches are invalidated so hero stats, matchup evidence, duration data, and item popularity are requested again.
+- **Player provider router:** public player resources now go through a hosted DotaSage route. OpenDota is tried first; STRATZ is available as an analytics/history fallback when a server-side token is configured; basic Steam Community identity is the final no-key profile fallback. Direct OpenDota remains a client fallback if the hosted router itself is unavailable.
+- **Refresh sources:** connected players can request an OpenDota refresh and clear DotaSage's cached public-player data without reconnecting the account.
+- **Zero-download live scan:** a browser-only scan checks OpenDota's public live/watchable-game feed for the connected account. When present, DotaSage can populate exposed lineups and use the provider clock. This is opportunistic because public live feeds do not contain every ordinary matchmaking lobby.
+- **Manual clock fallback:** Game Plan includes a browser-only Start/Pause/Reset timer. It uses a wall-clock anchor rather than incrementing a counter, which reduces drift when the browser throttles a background tab.
+- **Local GSI:** remains optional for users who want guaranteed client-local state when Valve exposes it. It is no longer presented as required for the normal browser experience.
+
+### Privacy remains upstream
+
+Provider fallback improves reliability; it does not bypass Valve privacy. If a player hid public match data, another analytics provider cannot manufacture the missing private public-match history. Once public-match exposure is enabled, new matches can begin entering provider indexes, while older hidden matches should not be assumed to backfill.
