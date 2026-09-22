@@ -34,9 +34,15 @@ export default function DraftBoard({ draft, onRemove, onClear, onOpenGamePlan, p
           <button className={`online-live-toggle ${onlineLiveEnabled ? onlineLiveStatus.found ? 'active' : 'enabled' : ''}`} onClick={onToggleOnlineLive} title="Zero-download scan for your account in provider-listed live/watchable matches">
             <i /> {onlineLiveEnabled ? onlineLiveStatus.found ? 'ONLINE LIVE' : onlineLiveStatus.searching ? 'SCANNING…' : 'ONLINE SCAN' : 'ONLINE SCAN'}
           </button>
-          <button className={`live-draft-toggle local-only ${liveDraftEnabled ? liveDraftStatus.active ? 'active' : 'enabled' : ''}`} onClick={onToggleLiveDraft} title="Optional desktop Live Sync — only needed for guaranteed local client data">
-            <i /> {liveDraftEnabled ? liveDraftStatus.active ? 'LOCAL LIVE' : liveDraftStatus.bridge ? 'LOCAL READY' : 'LOCAL WAIT' : 'LOCAL'}
-          </button>
+          <details className="draft-sync-advanced">
+            <summary title="Optional desktop sync and advanced draft controls">SYNC ▾</summary>
+            <div>
+              <span><b>DESKTOP SYNC</b><small>Optional. Browser draft + timer work without it.</small></span>
+              <button className={`live-draft-toggle local-only ${liveDraftEnabled ? liveDraftStatus.active ? 'active' : 'enabled' : ''}`} onClick={onToggleLiveDraft} title="Optional desktop Live Sync">
+                <i /> {liveDraftEnabled ? liveDraftStatus.active ? 'LOCAL LIVE' : liveDraftStatus.bridge ? 'LOCAL READY' : 'LOCAL WAIT' : 'CONNECT LOCAL'}
+              </button>
+            </div>
+          </details>
           <button className="ghost-button" onClick={onSwapTeams} title="Swap your team and enemy team">⇄</button>
           <button className="ghost-button" onClick={onClear}>Reset</button>
         </div>
