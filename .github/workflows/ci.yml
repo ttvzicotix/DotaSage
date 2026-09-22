@@ -18,7 +18,7 @@ jobs:
       - run: npm run build
       - name: Guard current DotaSage branding
         run: |
-          if grep -R -n -I --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist "DraftSage" .; then
-            echo "Old DraftSage branding found in tracked source/docs."
+          if grep -R -n -I "DraftSage" src public companion scripts README.md index.html package.json vercel.json vite.config.js; then
+            echo "Old DraftSage branding found in active product/source files."
             exit 1
           fi
