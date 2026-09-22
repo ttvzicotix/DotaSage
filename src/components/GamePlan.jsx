@@ -698,7 +698,7 @@ export default function GamePlan({
       <section className="gpv2-card"><span>NEXT CONVERSION</span><strong>Turn the next win into something permanent</strong><p>{objectiveCall(minute, matchState, converter)}</p></section>
     </div>
 
-    <MatchupAtlas hero={hero} allies={draft.allies || []} enemies={draft.enemies || []} />
+    <MatchupAtlas hero={hero} allies={draft.allies || []} enemies={draft.enemies || []} patch={patch} />
     <ObservedItems items={allItems} counts={observedCounts} onChange={changeObserved} />
     <ItemLab phases={phases} targets={targets} paths={paths} conditionals={conditionals} impacts={impacts} loading={itemLoading} />
     <CompactPostMatch hero={hero} />
