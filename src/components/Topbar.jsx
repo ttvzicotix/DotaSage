@@ -1,20 +1,35 @@
 import LiveIdentityGuard from './LiveIdentityGuard';
 import BrandGlyph from './BrandGlyph';
 
-export default function Topbar({ patch, player, profile, onReset, onOpenProfile, onOpenLegal }) {
+function ZMark() {
+  return <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M8 10h48L36.5 31H50L56 54H8l19.5-21H14z" /></svg>;
+}
+
+export default function Topbar({ patch, player, profile, onReset, onOpenProfile, onOpenLegal, onOpenAbout }) {
   const avatar = player?.profile?.avatar || player?.profile?.avatarmedium;
   const name = player?.profile?.personaname || profile.displayName;
   return <>
     <header className="topbar">
       <button className="brand-mark brand-button" onClick={onReset} title="Reset DotaSage">
         <BrandGlyph />
-        <div className="brand-wordmark"><strong>Dota<span>Sage</span></strong><small>DRAFT · MATCHUP · GAME PLAN</small></div>
+        <div className="brand-wordmark"><strong>Dota<span>Sage</span></strong><small>DRAFT INTELLIGENCE</small></div>
       </button>
-      <div className="topbar-status"><span className={`patch-badge ${patch?.live ? 'fresh' : ''}`} title={patch?.source || 'Bundled patch fallback'}>{patch?.id || '—'}</span><span className="verified-badge"><i /> MULTI-SOURCE DATA</span><button className="unofficial-badge" onClick={onOpenLegal} title="Valve attribution, Terms and Privacy">UNOFFICIAL FAN TOOL</button><span className="date-badge">{patch?.released || 'checking patch…'}</span></div>
-      <button className="account-button" onClick={onOpenProfile}>
-        {avatar ? <img src={avatar} alt="" /> : <span className="account-fallback">DS</span>}
-        <div><strong>{name}</strong><small>PROFILE · SETTINGS</small></div><b>⌄</b>
-      </button>
+
+      <div className="topbar-command" aria-label="DotaSage status">
+        <span className={`patch-badge ${patch?.live ? 'fresh' : ''}`} title={patch?.source || 'Bundled patch fallback'}>PATCH {patch?.id || '—'}</span>
+        <span className="verified-badge"><i /> DATA ONLINE</span>
+        <span className="topbar-divider" />
+        <span className="topbar-mode">DRAFT <b>→</b> PICK <b>→</b> PLAN</span>
+      </div>
+
+      <div className="topbar-actions">
+        <button className="zicotix-nav-button" onClick={onOpenAbout} title="About DotaSage and Zicotix"><ZMark /><span>ZICOTIX</span></button>
+        <button className="legal-icon-button" onClick={onOpenLegal} title="Valve attribution, Terms and Privacy" aria-label="Legal and privacy">i</button>
+        <button className="account-button" onClick={onOpenProfile}>
+          {avatar ? <img src={avatar} alt="" /> : <span className="account-fallback">DS</span>}
+          <div><strong>{name}</strong><small>{profile.accountId ? `ID ${profile.accountId}` : 'CONNECT PLAYER'}</small></div><b>⌄</b>
+        </button>
+      </div>
     </header>
     <LiveIdentityGuard activeAccountId={profile.accountId} />
   </>;

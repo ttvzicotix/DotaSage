@@ -81,3 +81,40 @@ No remote provider can reliably reconstruct a player's hidden personal match his
 ### Privacy remains upstream
 
 Provider fallback improves reliability; it does not bypass Valve privacy. If a player hid public match data, another analytics provider cannot manufacture the missing private public-match history. Once public-match exposure is enabled, new matches can begin entering provider indexes, while older hidden matches should not be assumed to backfill.
+
+
+## v0.21 provider + identity expansion
+
+### Player lookup
+
+The player connection field accepts:
+
+- Dota account/friend ID
+- 17-digit SteamID64
+- public player/persona name
+
+Name lookup is performed through DotaSage's same-origin `/api/search` route, backed by OpenDota public player search. Persona names are not unique, so the UI returns candidate profiles with avatar and account ID rather than automatically choosing one.
+
+### Matchup provider fallback
+
+Hero-vs-hero matchup rows now use a hosted provider router:
+
+1. OpenDota public matchup rows
+2. STRATZ GraphQL fallback when `STRATZ_TOKEN` or `STRATZ_API_TOKEN` is configured on the server
+3. direct OpenDota browser fallback if the DotaSage hosted router is unavailable
+
+Provider identity is retained in returned data for diagnostics, but the normal draft UI intentionally avoids printing provider/source labels on every score.
+
+### Browser-only live scanning
+
+The hosted live scanner attempts:
+
+1. OpenDota public live/watchable games
+2. Valve `GetTopLiveGame` / `GetTopLiveEventGame` when `STEAM_WEB_API_KEY` or `STEAM_API_KEY` is configured
+3. Valve `GetRealtimeStats` enrichment when a matching top-live game exposes a `server_steam_id`
+
+This improves browser-only coverage without requiring a DotaSage download, but these feeds represent top/watchable/live-public games rather than every ordinary matchmaking lobby or hero-selection screen. The browser-only manual draft and manual match timer remain the guaranteed no-install fallback.
+
+### Server secrets
+
+STRATZ and Steam Web API credentials are server environment variables only. Never place them in client JavaScript, repository files, Vite `VITE_*` variables, screenshots, logs, or documentation examples containing real values.
