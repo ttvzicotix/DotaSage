@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './styles.css';
 import { DEFAULT_PROFILE } from './data/defaultProfile';
-import { fetchHeroes, fetchHeroMatchups, fetchHeroStats, fetchPlayer, fetchPlayerHeroes, fetchPlayerWinLoss, fetchRecentMatches, fetchPlayerMatchHistory, fetchHeroDurations, fetchHeroItemPopularity, fetchItems, portraitUrl } from './services/openDota';
+import { fetchHeroes, fetchHeroMatchups, fetchHeroStats, fetchPlayer, fetchPlayerHeroes, fetchPlayerWinLoss, fetchRecentMatches, fetchPlayerMatchHistory, fetchHeroDurations, fetchHeroItemPopularity, fetchHeroEvidence, fetchItems, portraitUrl } from './services/openDota';
 import { buildPersonalScores } from './engine/playerModel';
-import { aggregateEnemyScore, compositionFit, compositionSynergyScore, draftFitScore, heroBaseWinRate, overallRecommendation, pairCounterScore } from './engine/scoring';
+import { aggregateEnemyScore, aggregateSynergyScore, compositionFit, compositionSynergyScore, draftFitScore, heroBaseWinRate, overallRecommendation, pairCounterScore, pairSynergyScore } from './engine/scoring';
 import PlayerProfile from './components/PlayerProfile';
 import DraftBoard from './components/DraftBoard';
 import HeroGrid from './components/HeroGrid';
@@ -92,6 +92,7 @@ export default function App() {
   const [draft, setDraft] = useState(emptyDraft);
   const [enemyMatrix, setEnemyMatrix] = useState(new Map());
   const [durationData, setDurationData] = useState(new Map());
+  const [allySynergyMatrix, setAllySynergyMatrix] = useState(new Map());
   const [durationLoading, setDurationLoading] = useState(false);
   const [selectedPairsLive, setSelectedPairsLive] = useState([]);
   const [selectedPairLoading, setSelectedPairLoading] = useState(false);
@@ -344,6 +345,28 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
+    if (!draft.allies.length) {
+      setAllySynergyMatrix(new Map());
+      return undefined;
+    }
+    (async () => {
+      const next = new Map();
+      await Promise.all(draft.allies.map(async ally => {
+        try {
+          const evidence = await fetchHeroEvidence(ally.id);
+          next.set(ally.id, Array.isArray(evidence?.synergy) ? evidence.synergy : []);
+        } catch (error) {
+          console.warn(`Synergy evidence unavailable for ${ally.localized_name}`, error);
+          next.set(ally.id, []);
+        }
+      }));
+      if (!cancelled) setAllySynergyMatrix(next);
+    })();
+    return () => { cancelled = true; };
+  }, [draft.allies, patch.id]);
+
+  useEffect(() => {
+    let cancelled = false;
     const selected = [...draft.allies, ...draft.enemies].filter((h, i, rows) => rows.findIndex(x => x.id === h.id) === i);
     if (!selected.length) { setDurationData(new Map()); setDurationLoading(false); return undefined; }
     (async () => {
@@ -431,16 +454,48 @@ export default function App() {
       });
       const enemyScore = aggregateEnemyScore(pairScores);
       const teammates = draft.allies.filter(a => a.id !== hero.id);
-      const synergyScore = compositionSynergyScore(hero, teammates);
+      const modeledSynergyScore = compositionSynergyScore(hero, teammates);
+      const empiricalSynergyPairs = teammates.map(ally => {
+        const rows = allySynergyMatrix.get(ally.id) || [];
+        const row = rows.find(sample => Number(sample.hero_id) === Number(hero.id));
+        if (!row || !Number(row.games_played || 0)) return null;
+        const result = pairSynergyScore({
+          pairWins: Number(row.wins || 0),
+          pairGames: Number(row.games_played || 0),
+          candidateBase: heroBaseWinRate(statById.get(Number(hero.id))),
+          allyBase: heroBaseWinRate(statById.get(Number(ally.id))),
+        });
+        return { hero: ally, provider: row?._provider || null, ...result };
+      }).filter(Boolean);
+      const empiricalSynergyScore = aggregateSynergyScore(empiricalSynergyPairs);
+      const synergyScore = empiricalSynergyPairs.length ? empiricalSynergyScore : modeledSynergyScore;
+      const synergySource = empiricalSynergyPairs.length ? 'empirical' : 'modeled';
+      const synergyGames = empiricalSynergyPairs.reduce((sum, row) => sum + Number(row.games || 0), 0);
+      const synergyCoverage = teammates.length ? empiricalSynergyPairs.length / teammates.length : 0;
+      const synergyProviders = [...new Set(empiricalSynergyPairs.map(row => row.provider).filter(Boolean))];
       const teamFit = compositionFit(hero, teammates);
       const metaScore = metaScoreFromStat(statById.get(Number(hero.id)));
       const draftFit = draftFitScore({ enemyScore, synergyScore, teamFit, metaScore });
       const overall = overallRecommendation({ enemyScore, synergyScore, teamFit, personalFit: personal.score, metaScore });
-      scores.set(hero.id, { enemyScore, synergyScore, teamFit, personalFit: personal.score, metaScore, draftFit, overall, personal });
+      scores.set(hero.id, {
+        enemyScore,
+        synergyScore,
+        synergySource,
+        synergyGames,
+        synergyCoverage,
+        synergyProviders,
+        modeledSynergyScore,
+        teamFit,
+        personalFit: personal.score,
+        metaScore,
+        draftFit,
+        overall,
+        personal,
+      });
       pairBreakdowns.set(hero.id, pairScores);
     }
     return { scores, pairBreakdowns };
-  }, [heroes, draft.allies, draft.enemies, enemyMatrix, personalForHero, statById]);
+  }, [heroes, draft.allies, draft.enemies, enemyMatrix, allySynergyMatrix, personalForHero, statById]);
 
   const usedIds = useMemo(() => new Set([...draft.allies.map(h => h.id), ...draft.enemies.map(h => h.id), ...draft.bans.map(h => h.id)]), [draft]);
   const roleEligibleHeroes = useMemo(() => heroes.filter(hero => matchesLane(hero, laneFilter)), [heroes, laneFilter]);
