@@ -64,7 +64,7 @@ export default function HeroGrid({ allHeroes, roleHeroes, heroes, scores, stateF
 
   return <section className={`hero-browser glass-panel ${expanded ? 'expanded' : 'collapsed'}`}>
     <div className="quick-add-row v08-quick-row">
-      <div className="quick-copy"><div className="eyebrow">QUICK DRAFT · ALL HEROES</div><strong>Enter the draft. Role filtering lives in Pick Advisor.</strong></div>
+      <div className="quick-copy"><div className="eyebrow">QUICK DRAFT · ALL HEROES</div><strong>Enter either lineup here. Set your pick role below to filter recommendations.</strong></div>
       <div className="hero-search-wrap">
         <div className="search-box hero-search"><span>⌕</span><input ref={inputRef} value={query} onChange={event => setQuery(event.target.value)} placeholder="Hero or alias · wk · bm · ck · ss…" autoComplete="off" /></div>
         <div className="quick-search-scope always-all" aria-label="Quick Draft behavior"><span><b>{allHeroes.length} HEROES</b> · Radiant / Dire = map side · ★ Pick · Ban · search resets after every add</span></div>
