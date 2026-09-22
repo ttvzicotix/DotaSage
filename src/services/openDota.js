@@ -2,6 +2,7 @@ import { FALLBACK_HEROES } from '../data/fallbackHeroes.js';
 
 const BASE = 'https://api.opendota.com/api';
 const matchupCache = new Map();
+const evidenceCache = new Map();
 const durationCache = new Map();
 const itemPopularityCache = new Map();
 let heroStatsCache = null;
@@ -51,6 +52,7 @@ export function clearPatchSensitiveCaches() {
   heroStatsCache = null;
   itemsCache = null;
   matchupCache.clear();
+  evidenceCache.clear();
   durationCache.clear();
   itemPopularityCache.clear();
   if (typeof window === 'undefined') return;
@@ -62,6 +64,7 @@ export function clearPatchSensitiveCaches() {
       if (!key) continue;
       if (
         key.startsWith('dotasage:matchups:') ||
+        key.startsWith('dotasage:evidence:') ||
         key.startsWith('dotasage:durations:') ||
         key.startsWith('dotasage:itemPopularity:')
       ) window.localStorage.removeItem(key);
@@ -241,12 +244,13 @@ export async function fetchHeroStats() {
   return heroStatsCache;
 }
 
-export async function fetchHeroMatchups(heroId) {
-  if (matchupCache.has(heroId)) return matchupCache.get(heroId);
-  const cacheKey = `matchups:${heroId}`;
+export async function fetchHeroEvidence(heroId) {
+  if (evidenceCache.has(heroId)) return evidenceCache.get(heroId);
+  const cacheKey = `evidence:${heroId}`;
   const cached = cacheRead(cacheKey, 6 * 60 * 60 * 1000);
   if (cached != null) {
-    matchupCache.set(heroId, cached);
+    evidenceCache.set(heroId, cached);
+    matchupCache.set(heroId, cached.matchups || []);
     return cached;
   }
 
@@ -256,19 +260,40 @@ export async function fetchHeroMatchups(heroId) {
     });
     if (!response.ok) throw new Error(`Matchup router ${response.status}`);
     const payload = await response.json();
-    const rows = Array.isArray(payload?.rows) ? payload.rows.map(row => ({ ...row, _provider: row._provider || payload.provider || null })) : [];
-    if (rows.length) {
-      cacheWrite(cacheKey, rows);
-      matchupCache.set(heroId, rows);
-      return rows;
+    const provider = payload?.provider || null;
+    const matchups = Array.isArray(payload?.rows)
+      ? payload.rows.map(row => ({ ...row, _provider: row._provider || provider }))
+      : [];
+    const synergy = Array.isArray(payload?.synergy)
+      ? payload.synergy.map(row => ({ ...row, _provider: row._provider || provider }))
+      : [];
+    if (matchups.length || synergy.length) {
+      const value = { provider, matchups, synergy, attempts: payload?.attempts || [] };
+      cacheWrite(cacheKey, value);
+      evidenceCache.set(heroId, value);
+      matchupCache.set(heroId, matchups);
+      return value;
     }
   } catch (error) {
     console.warn('DotaSage matchup provider router unavailable; using direct OpenDota fallback.', error);
   }
 
-  const data = await getJson(`/heroes/${heroId}/matchups`, { ttlMs: 6 * 60 * 60 * 1000, cacheKey });
-  matchupCache.set(heroId, data);
-  return data;
+  const matchups = await getJson(`/heroes/${heroId}/matchups`, {
+    ttlMs: 6 * 60 * 60 * 1000,
+    cacheKey: `matchups:${heroId}`,
+  });
+  const tagged = Array.isArray(matchups) ? matchups.map(row => ({ ...row, _provider: 'OpenDota' })) : [];
+  const value = { provider: 'OpenDota', matchups: tagged, synergy: [], attempts: [] };
+  cacheWrite(cacheKey, value);
+  evidenceCache.set(heroId, value);
+  matchupCache.set(heroId, tagged);
+  return value;
+}
+
+export async function fetchHeroMatchups(heroId) {
+  if (matchupCache.has(heroId)) return matchupCache.get(heroId);
+  const evidence = await fetchHeroEvidence(heroId);
+  return evidence.matchups || [];
 }
 
 export async function fetchHeroDurations(heroId) {
