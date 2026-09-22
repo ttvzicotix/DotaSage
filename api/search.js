@@ -72,13 +72,16 @@ async function resolveSteamProfile(profileUrl, expectedName = null) {
   }
 }
 
-async function resolveVanity(query) {
+async function resolveVanity(query, allowImplicit = false) {
   const raw = String(query || '').trim();
   const profileMatch = raw.match(/^https?:\/\/steamcommunity\.com\/(?:id|profiles)\/[^/?#]+/i);
   if (profileMatch) return resolveSteamProfile(profileMatch[0]);
 
-  if (!/^[a-z0-9_-]{2,64}$/i.test(raw)) return null;
-  return resolveSteamProfile(`${STEAM_COMMUNITY}/id/${encodeURIComponent(raw)}`, raw);
+  const explicit = raw.startsWith('@');
+  const vanity = explicit ? raw.slice(1) : raw;
+  if (!explicit && !allowImplicit) return null;
+  if (!/^[a-z0-9_-]{2,64}$/i.test(vanity)) return null;
+  return resolveSteamProfile(`${STEAM_COMMUNITY}/id/${encodeURIComponent(vanity)}`, vanity);
 }
 
 async function openDotaSearch(query) {
@@ -152,6 +155,7 @@ function rankResult(row, query) {
   else if (name.startsWith(q)) score += 60;
   else if (name.includes(q)) score += 35;
   if (row.provider === 'Steam Vanity') score += 130;
+  else if (row.provider === 'Steam Community Search') score += 12;
   if (row.lastMatchTime) score += Math.max(0, 20 - (Date.now() - new Date(row.lastMatchTime).getTime()) / 86400000);
   return score;
 }
@@ -167,11 +171,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'invalid_query' });
   }
 
-  const [openDotaSettled, steamSettled, vanitySettled] = await Promise.allSettled([
+  const [openDotaSettled, steamSettled] = await Promise.allSettled([
     openDotaSearch(q),
     steamCommunitySearch(q),
-    resolveVanity(q),
   ]);
+  const openDotaRows = openDotaSettled.status === 'fulfilled' ? openDotaSettled.value : [];
+  const explicitVanity = q.startsWith('@') || /^https?:\/\/steamcommunity\.com\/(?:id|profiles)\//i.test(q);
+  const vanitySettled = await Promise.resolve(resolveVanity(q, explicitVanity || openDotaRows.length === 0))
+    .then(value => ({ status: 'fulfilled', value }))
+    .catch(reason => ({ status: 'rejected', reason }));
 
   const attempts = [
     { provider: 'OpenDota Search', ok: openDotaSettled.status === 'fulfilled' },
@@ -181,7 +189,7 @@ export default async function handler(req, res) {
 
   const rows = [
     ...(vanitySettled.status === 'fulfilled' && vanitySettled.value ? [{ ...vanitySettled.value, provider: 'Steam Vanity' }] : []),
-    ...(openDotaSettled.status === 'fulfilled' ? openDotaSettled.value : []),
+    ...openDotaRows,
     ...(steamSettled.status === 'fulfilled' ? steamSettled.value : []),
   ];
 

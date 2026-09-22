@@ -122,7 +122,7 @@ export default function PlayerConnection({ accountId, source, onConnect, onForge
       <form className="player-connect-form player-search-form" onSubmit={submit}>
         <div className="player-search-input">
           <span aria-hidden="true">⌕</span>
-          <input value={value} onChange={event => { setValue(event.target.value); setResults([]); }} placeholder="Player name, Steam vanity/link, Dota ID…" aria-label="Player name, Steam profile or vanity, Dota account ID, or SteamID64" autoComplete="off" />
+          <input value={value} onChange={event => { setValue(event.target.value); setResults([]); }} placeholder="Player name, @vanity, Steam link, Dota ID…" aria-label="Player name, Steam profile or vanity, Dota account ID, or SteamID64" autoComplete="off" />
         </div>
         <button className="primary-button" type="submit" disabled={searching}>{searching ? 'SEARCHING…' : /^\d+$/.test(String(value).trim()) ? 'CONNECT' : 'SEARCH'}</button>
       </form>
@@ -135,7 +135,7 @@ export default function PlayerConnection({ accountId, source, onConnect, onForge
       </div>}
       <div className="player-connect-secondary">
         <button className="player-detect-button" onClick={() => detect(false)} disabled={detecting}>{detecting ? 'CHECKING…' : 'OPTIONAL DESKTOP DETECT'}</button>
-        <small>Names are not unique. You can also paste a Steam profile URL or custom vanity name for a more exact lookup.</small>
+        <small>Names are not unique. Paste a Steam profile URL or use @custom-vanity for an exact Steam lookup.</small>
       </div>
       <small className="player-connect-help">{status || 'Public match history still depends on the player’s Dota privacy setting.'}</small>
     </>}
