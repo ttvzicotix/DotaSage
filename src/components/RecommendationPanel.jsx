@@ -16,7 +16,7 @@ function reasonFor(entry, mode) {
   if (mode === 'personal') return personal?.games ? `${personal.games} games in your public history` : 'Low personal sample, but still draft-viable';
   if (mode === 'learn') return 'Strong draft fit outside your usual comfort pool';
   if (score.enemyScore >= 5) return 'Excellent into the entered enemy draft';
-  if (score.synergyScore >= 4) return 'Strong modeled synergy with the allies already entered';
+  if (score.synergyScore >= 4) return score.synergySource === 'empirical' ? 'Strong empirical same-team synergy with the allies entered' : 'Strong modeled synergy with the allies already entered';
   if (score.metaScore >= 7) return 'Strong current meta baseline';
   return 'Best combined draft fit available';
 }
@@ -70,8 +70,8 @@ function PrimaryPick({ entry, onPick, mode, draftComplete, enemyCount, patch, pr
       </div>
       <div className="pick-evidence-row">
         <span><small>COUNTER DATA</small><b>{sourceText}</b></span>
+        <span><small>ALLY FIT</small><b>{score.synergySource === 'empirical' ? `${(score.synergyProviders || []).join(' + ') || 'STRATZ'} · ${Number(score.synergyGames || 0).toLocaleString()} samples` : 'ROLE MODEL FALLBACK'}</b></span>
         <span><small>COVERAGE</small><b>{evidence.verified.length}/{Math.max(enemyCount, 0)} enemies</b></span>
-        <span><small>SAMPLE</small><b>{evidence.games ? evidence.games.toLocaleString() : 'building'}</b></span>
         <span><small>PATCH</small><b>{patch?.id || '—'}</b></span>
       </div>
       <button onClick={() => onPick(hero, 'self')}>LOCK PICK{draftComplete ? ' · GAME PLAN READY' : ''} <span>→</span></button>
@@ -86,7 +86,9 @@ function AdvisorSignals({ entry, enemyCount, patch }) {
   const verifiedPairs = evidence.verified;
   const signals = [
     ['ENEMY FIT', Math.max(0, Math.min(10, 5 + score.enemyScore / 2)), score.enemyScore >= 0 ? `+${score.enemyScore.toFixed(1)} counter edge` : `${score.enemyScore.toFixed(1)} counter pressure`],
-    ['SYNERGY', Math.max(0, Math.min(10, 5 + score.synergyScore / 2)), `${score.synergyScore >= 0 ? '+' : ''}${score.synergyScore.toFixed(1)} modeled ally fit`],
+    ['SYNERGY', Math.max(0, Math.min(10, 5 + score.synergyScore / 2)), score.synergySource === 'empirical'
+      ? `${score.synergyScore >= 0 ? '+' : ''}${score.synergyScore.toFixed(1)} empirical ally fit · ${Number(score.synergyGames || 0).toLocaleString()} samples`
+      : `${score.synergyScore >= 0 ? '+' : ''}${score.synergyScore.toFixed(1)} modeled ally fit · awaiting empirical pair data`],
     ['META', score.metaScore, `patch ${patch?.id || 'current'} public baseline`],
   ];
   return <div className="advisor-signal-rail">
@@ -168,7 +170,7 @@ export default function RecommendationPanel({
       <AdvisorSignals entry={top} enemyCount={enemyCount} patch={patch} />
     </> : <div className="empty-state"><strong>No eligible heroes for this position.</strong><span>Try Flex or another role.</span></div>}
     <div className="recommend-foot v08-recommend-foot">
-      <span><b>ADVANTAGE MODE</b> 60% empirical counters · 35% modeled synergy · 5% meta</span>
+      <span><b>ADVANTAGE MODE</b> 60% empirical counters · 35% ally synergy (empirical when available) · 5% meta</span>
       <span><b>CONFIDENCE</b> reflects evidence coverage/sample size, not predicted win chance</span>
     </div>
   </section>;
