@@ -565,6 +565,7 @@ function CompactPostMatch({ hero }) {
 }
 
 export default function GamePlan({
+  beginnerMode = true,
   patch,
   onlineLiveMatch,
   draft,
@@ -683,20 +684,20 @@ export default function GamePlan({
       <div className="gpv2-scores"><ScorePill label="VS ENEMY" value={selectedScore?.enemyScore} signed /><ScorePill label="TEAM FIT" value={selectedScore?.teamFit} /><ScorePill label="PERSONAL" value={selectedScore?.personalFit != null ? selectedScore.personalFit / 10 : null} /><ScorePill label="RECOMMEND" value={selectedScore?.overall} /></div>
     </section>
 
-    <section className="gpv2-provenance" aria-label="Game plan data provenance">
+    {!beginnerMode && <section className="gpv2-provenance" aria-label="Game plan data provenance">
       <div><span>COUNTER SOURCE</span><strong>{matchupSourceLabel}</strong></div>
       <div><span>EVIDENCE</span><strong className={`evidence-${evidenceLabel.toLowerCase()}`}>{evidenceLabel}</strong><small>{knownPairs.length}/{draft.enemies?.length || 0} enemies covered</small></div>
       <div><span>PAIR SAMPLE</span><strong>{pairSamples ? pairSamples.toLocaleString() : 'building'}</strong></div>
       <div><span>PATCH</span><strong>{patch?.id || '—'}</strong></div>
       <div><span>CLOCK</span><strong>{onlineClockConnected ? 'ONLINE LIVE' : liveClockConnected ? 'LOCAL LIVE' : 'MANUAL READY'}</strong></div>
-    </section>
+    </section>}
 
-    <section className="gpv2-lineups">
+    {!beginnerMode && <section className="gpv2-lineups">
       {[['RADIANT', radiant, ratingMap('radiant')], ['DIRE', dire, ratingMap('dire')]].map(([label, heroes, ratings]) => <div key={label}><span>{label} · {label.toLowerCase() === playerSide ? 'YOUR TEAM' : 'ENEMY'}</span><div>{heroes.map(row => <article className={row.id === hero.id ? 'self' : ''} key={row.id}><img src={row.portrait} alt="" /><small>{row.localized_name}</small><b>{signed(ratings?.get(row.id) ?? 0)}</b></article>)}</div></div>)}
-    </section>
+    </section>}
 
     <MatchContext minute={minute} state={matchState} onMinute={setMinute} onState={setMatchState} liveClock={liveClockConnected || onlineClockConnected} />
-    <LiveBar itemConstants={itemConstants} onMinute={setMinute} onConnectionChange={setLiveClockConnected} onlineLiveMatch={onlineLiveMatch} />
+    {!beginnerMode && <LiveBar itemConstants={itemConstants} onMinute={setMinute} onConnectionChange={setLiveClockConnected} onlineLiveMatch={onlineLiveMatch} />}
 
     <div className="gpv2-command">
       <div className="gpv2-command-main">
@@ -708,25 +709,25 @@ export default function GamePlan({
           </div>
           <div className="gpv2-coach-list">{coach.map((text, index) => <div key={index}><b>{String(index + 1).padStart(2, '0')}</b><p>{text}</p></div>)}</div>
         </section>
-        <LaneBoard map={laneMap} selfId={hero.id} overrides={laneOverrides} onMove={moveLane} />
+        {!beginnerMode && <LaneBoard map={laneMap} selfId={hero.id} overrides={laneOverrides} onMove={moveLane} />}
       </div>
 
       <aside className="gpv2-intel-rail">
         <ThreatList title="Biggest threats" rows={threats} loading={pairLoading} error={pairError && !knownPairs.length} />
         <ThreatList title="Best matchups" rows={opportunities} loading={pairLoading} error={false} positive />
-        <section className="gpv2-side-card gpv2-checkpoints"><div className="gpv2-side-title"><span>ROLE TIMELINE</span><strong>Checkpoints</strong></div>{checkpoints.map(([time, text]) => <div key={time}><b>{time}</b><p>{text}</p></div>)}</section>
-        <section className="gpv2-side-card gpv2-fight"><div className="gpv2-side-title"><span>FIGHT SEQUENCE</span><strong>How your five wants to enter</strong></div>{[['OPEN', opener], ['LAYER', layer], ['YOUR ENTRY', hero], ['CONVERT', converter]].map(([label, row], index) => <div key={`${label}-${index}`}><b>{index + 1}</b><span><small>{label}</small><strong>{row?.localized_name || 'Team'}</strong></span></div>)}</section>
+        {!beginnerMode && <section className="gpv2-side-card gpv2-checkpoints"><div className="gpv2-side-title"><span>ROLE TIMELINE</span><strong>Checkpoints</strong></div>{checkpoints.map(([time, text]) => <div key={time}><b>{time}</b><p>{text}</p></div>)}</section>}
+        {!beginnerMode && <section className="gpv2-side-card gpv2-fight"><div className="gpv2-side-title"><span>FIGHT SEQUENCE</span><strong>How your five wants to enter</strong></div>{[['OPEN', opener], ['LAYER', layer], ['YOUR ENTRY', hero], ['CONVERT', converter]].map(([label, row], index) => <div key={`${label}-${index}`}><b>{index + 1}</b><span><small>{label}</small><strong>{row?.localized_name || 'Team'}</strong></span></div>)}</section>}
       </aside>
     </div>
 
     <div className="gpv2-map-info">
-      <section className="gpv2-card"><span>VISION</span><strong>Where the next information should come from</strong><p>{visionCall(minute, matchState)}</p></section>
-      <section className="gpv2-card"><span>NEXT CONVERSION</span><strong>Turn the next win into something permanent</strong><p>{objectiveCall(minute, matchState, converter)}</p></section>
+      {!beginnerMode && <section className="gpv2-card"><span>VISION</span><strong>Where the next information should come from</strong><p>{visionCall(minute, matchState)}</p></section>}
+      <section className="gpv2-card"><span>NEXT MOVE</span><strong>{objectiveCall(minute, matchState, converter)}</strong>{!beginnerMode && <p>Turn the next won fight into something permanent instead of extending the chase.</p>}</section>
     </div>
 
-    <MatchupAtlas hero={hero} allies={draft.allies || []} enemies={draft.enemies || []} patch={patch} />
-    <ObservedItems items={allItems} counts={observedCounts} onChange={changeObserved} />
-    <ItemLab phases={phases} targets={targets} paths={paths} conditionals={conditionals} impacts={impacts} loading={itemLoading} />
-    <CompactPostMatch hero={hero} />
+    {!beginnerMode && <MatchupAtlas hero={hero} allies={draft.allies || []} enemies={draft.enemies || []} patch={patch} />}
+    {!beginnerMode && <ObservedItems items={allItems} counts={observedCounts} onChange={changeObserved} />}
+    {!beginnerMode && <ItemLab phases={phases} targets={targets} paths={paths} conditionals={conditionals} impacts={impacts} loading={itemLoading} />}
+    {!beginnerMode && <CompactPostMatch hero={hero} />}
   </main>;
 }
