@@ -10,6 +10,7 @@ import HeroGrid from './components/HeroGrid';
 import RecommendationPanel from './components/RecommendationPanel';
 import DraftInsights from './components/DraftInsights';
 import GamePlan from './components/GamePlan';
+import GamePlanBoundary from './components/GamePlanBoundary';
 import Topbar from './components/Topbar';
 import ProfileModal from './components/ProfileModal';
 import LegalModal from './components/LegalModal';
@@ -125,6 +126,10 @@ export default function App() {
   const [providerStatus, setProviderStatus] = useState(null);
   const [roleMeta, setRoleMeta] = useState({ provider: null, position: null, rows: [] });
   const [copyDraftStatus, setCopyDraftStatus] = useState('');
+  const [beginnerMode, setBeginnerMode] = useState(() => {
+    try { return localStorage.getItem('dotasage:experience-mode') !== 'advanced'; }
+    catch { return true; }
+  });
   const [draftSessionHydrated, setDraftSessionHydrated] = useState(false);
   const lastAutoPlanSignatureRef = useRef('');
   const lastLocalDraftSignatureRef = useRef('');
@@ -717,6 +722,14 @@ export default function App() {
     });
   }
 
+  function toggleExperienceMode() {
+    setBeginnerMode(current => {
+      const next = !current;
+      try { localStorage.setItem('dotasage:experience-mode', next ? 'simple' : 'advanced'); } catch {}
+      return next;
+    });
+  }
+
   async function copyDraftLink() {
     const encoded = encodeDraftState(draftPayload({ draft, playerSide, laneFilter, advisorMode }));
     if (!encoded) {
@@ -774,8 +787,10 @@ export default function App() {
 
   if (view === 'gameplan' && draft.self) return <div className="app-shell gameplan-shell">
     <div className="ambient-grid" />
-    <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
-    <GamePlan patch={patch} onlineLiveMatch={onlineLiveMatch} draft={draft} playerSide={playerSide} laneFilter={laneFilter} lineupRatings={lineupRatings} selectedScore={selectedScore} pairBreakdown={selectedPairs} pairLoading={selectedPairLoading} pairError={selectedPairError && !selectedPairs.some(x => x.games > 0)} positionLabel={laneLabels[laneFilter]} itemPopularity={itemPopularity} itemConstants={itemConstants} itemLoading={itemLoading} onBack={() => setView('draft')} />
+    <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} beginnerMode={beginnerMode} onToggleMode={toggleExperienceMode} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
+    <GamePlanBoundary onBack={() => setView('draft')}>
+      <GamePlan beginnerMode={beginnerMode} patch={patch} onlineLiveMatch={onlineLiveMatch} draft={draft} playerSide={playerSide} laneFilter={laneFilter} lineupRatings={lineupRatings} selectedScore={selectedScore} pairBreakdown={selectedPairs} pairLoading={selectedPairLoading} pairError={selectedPairError && !selectedPairs.some(x => x.games > 0)} positionLabel={laneLabels[laneFilter]} itemPopularity={itemPopularity} itemConstants={itemConstants} itemLoading={itemLoading} onBack={() => setView('draft')} />
+    </GamePlanBoundary>
     <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} profile={DEFAULT_PROFILE} player={player} winLoss={winLoss} recentMatches={recentMatches} allMatches={allMatches} historyLoading={historyLoading} historyError={historyError} playerHeroRows={playerHeroRows} heroes={heroes} recentSummary={recent} />
     <LegalModal open={legalOpen} onClose={() => setLegalOpen(false)} />
     <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
@@ -784,16 +799,16 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="ambient-grid" />
-      <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
+      <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} beginnerMode={beginnerMode} onToggleMode={toggleExperienceMode} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
 
-      <div className="command-layout">
+      <div className={`command-layout ${beginnerMode ? 'beginner-layout' : 'advanced-layout'}`}>
         <aside className="left-rail">
-          <PlayerProfile profile={DEFAULT_PROFILE} player={player} loading={profileLoading} personalSummary={personalSummary} winLoss={winLoss} recentSummary={recent} onOpenProfile={() => setProfileOpen(true)} />
-          <DraftBoard draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; lastLocalDraftSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} onCopyLink={copyDraftLink} copyStatus={copyDraftStatus} playerSide={playerSide} onSideChange={changePlayerSide} onSwapTeams={swapTeams} onlineLiveEnabled={onlineLiveEnabled} onlineLiveStatus={onlineLiveStatus} onToggleOnlineLive={toggleOnlineLive} liveDraftEnabled={localDraftEnabled} liveDraftStatus={localDraftStatus} onToggleLiveDraft={toggleLocalDraftSync} />
+          {!beginnerMode && <PlayerProfile profile={DEFAULT_PROFILE} player={player} loading={profileLoading} personalSummary={personalSummary} winLoss={winLoss} recentSummary={recent} onOpenProfile={() => setProfileOpen(true)} />}
+          <DraftBoard beginnerMode={beginnerMode} draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; lastLocalDraftSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} onCopyLink={copyDraftLink} copyStatus={copyDraftStatus} playerSide={playerSide} onSideChange={changePlayerSide} onSwapTeams={swapTeams} onlineLiveEnabled={onlineLiveEnabled} onlineLiveStatus={onlineLiveStatus} onToggleOnlineLive={toggleOnlineLive} liveDraftEnabled={localDraftEnabled} liveDraftStatus={localDraftStatus} onToggleLiveDraft={toggleLocalDraftSync} />
         </aside>
 
         <main className="center-stage">
-          <DraftFlowBar
+          {!beginnerMode && <DraftFlowBar
             connected={Boolean(DEFAULT_PROFILE.accountId)}
             playerSide={playerSide}
             laneFilter={laneFilter}
@@ -803,12 +818,12 @@ export default function App() {
             patch={patch}
             onlineLiveStatus={onlineLiveStatus}
             providerStatus={providerStatus}
-          />
-          <HeroGrid allHeroes={heroes} roleHeroes={roleEligibleHeroes} heroes={filteredHeroes} scores={scoreBundle.scores} stateForHero={stateForHero} onAction={actOnHero} query={query} setQuery={setQuery} attr={attr} setAttr={setAttr} loadingLive={matrixLoading || rosterLoading} laneFilter={laneFilter} setLaneFilter={setLaneFilter} playerSide={playerSide} />
-          <RecommendationPanel recommendations={recommendations} onPick={actOnHero} draftComplete={draftComplete} allyCount={draft.allies.length} enemyCount={draft.enemies.length} laneLabel={laneLabels[laneFilter]} laneFilter={laneFilter} setLaneFilter={setLaneFilter} matrixLoading={matrixLoading} advisorMode={advisorMode} setAdvisorMode={setAdvisorMode} playerSide={playerSide} patch={patch} providerStatus={providerStatus} />
+          />}
+          <HeroGrid beginnerMode={beginnerMode} allHeroes={heroes} roleHeroes={roleEligibleHeroes} heroes={filteredHeroes} scores={scoreBundle.scores} stateForHero={stateForHero} onAction={actOnHero} query={query} setQuery={setQuery} attr={attr} setAttr={setAttr} loadingLive={matrixLoading || rosterLoading} laneFilter={laneFilter} setLaneFilter={setLaneFilter} playerSide={playerSide} />
+          <RecommendationPanel beginnerMode={beginnerMode} recommendations={recommendations} onPick={actOnHero} draftComplete={draftComplete} allyCount={draft.allies.length} enemyCount={draft.enemies.length} laneLabel={laneLabels[laneFilter]} laneFilter={laneFilter} setLaneFilter={setLaneFilter} matrixLoading={matrixLoading} advisorMode={advisorMode} setAdvisorMode={setAdvisorMode} playerSide={playerSide} patch={patch} providerStatus={providerStatus} />
         </main>
 
-        <DraftInsights draft={draft} matrixLoading={matrixLoading} durationData={durationData} durationLoading={durationLoading} />
+        {!beginnerMode && <DraftInsights draft={draft} matrixLoading={matrixLoading} durationData={durationData} durationLoading={durationLoading} />}
       </div>
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} profile={DEFAULT_PROFILE} player={player} winLoss={winLoss} recentMatches={recentMatches} allMatches={allMatches} historyLoading={historyLoading} historyError={historyError} playerHeroRows={playerHeroRows} heroes={heroes} recentSummary={recent} />
       <LegalModal open={legalOpen} onClose={() => setLegalOpen(false)} />
