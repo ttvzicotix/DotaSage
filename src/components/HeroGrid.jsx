@@ -5,10 +5,6 @@ import { heroSearchScore } from '../data/heroAliases';
 const attrs = [['allFilter', 'ALL'], ['str', 'STR'], ['agi', 'AGI'], ['int', 'INT'], ['all', 'UNI']];
 const INITIAL_ROSTER = 48;
 const ROSTER_STEP = 48;
-const positionFilters = [
-  ['all', 'FLEX'], ['safe', 'POS 1'], ['mid', 'POS 2'], ['off', 'POS 3'],
-  ['support4', 'POS 4'], ['support5', 'POS 5'], ['roam', 'ROAM'],
-];
 function quickTargetsForSide(playerSide) {
   const yourSide = playerSide === 'dire' ? 'DIRE' : 'RADIANT';
   const enemySide = playerSide === 'dire' ? 'RADIANT' : 'DIRE';
@@ -20,11 +16,9 @@ function quickTargetsForSide(playerSide) {
   ];
 }
 
-function QuickHero({ beginnerMode = true, hero, state, onAction, quickTarget, targets, playerSide }) {
+function QuickHero({ hero, state, onAction, quickTarget, targets, playerSide }) {
   const used = state && state !== 'available';
   const targetLabel = targets.find(([key]) => key === quickTarget)?.[1] || (playerSide === 'dire' ? 'RADIANT' : 'DIRE');
-  const radiantAction = playerSide === 'radiant' ? 'ally' : 'enemy';
-  const direAction = playerSide === 'dire' ? 'ally' : 'enemy';
   return <article className={`quick-hero-tile ${used ? `used ${state}` : ''}`}>
     <button
       className="quick-hero-main"
@@ -39,12 +33,6 @@ function QuickHero({ beginnerMode = true, hero, state, onAction, quickTarget, ta
       </span>
       {!used && <b className="quick-target-hint">{targetLabel}</b>}
     </button>
-    {!beginnerMode && !used && <div className="quick-hero-actions semantic-quick-actions">
-      <button className="radiant" title="Add to Radiant" onClick={() => onAction(hero, radiantAction)}>RADIANT</button>
-      <button className="dire" title="Add to Dire" onClick={() => onAction(hero, direAction)}>DIRE</button>
-      <button className="pick" title={`Lock as your hero on ${playerSide.toUpperCase()}`} onClick={() => onAction(hero, 'self')}>★ PICK</button>
-      <button className="ban" title="Ban hero" onClick={() => onAction(hero, 'ban')}>BAN</button>
-    </div>}
   </article>;
 }
 
@@ -101,13 +89,6 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
         return;
       }
       if (typing || event.altKey || event.ctrlKey || event.metaKey) return;
-      const byKey = beginnerMode
-        ? { '1': 'ally', '2': 'enemy', '3': 'self' }
-        : { '1': 'ally', '2': 'enemy', '3': 'self', '4': 'ban' };
-      if (byKey[event.key]) {
-        event.preventDefault();
-        setQuickTarget(byKey[event.key]);
-      }
       if (event.key === 'Escape') {
         setQuery('');
         setExpanded(false);
@@ -115,7 +96,7 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [setQuery, beginnerMode]);
+  }, [setQuery]);
 
   function runAction(hero, action) {
     onAction(hero, action);
@@ -135,61 +116,35 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
   }
 
   return <section className={`hero-browser glass-panel ${expanded ? 'expanded' : 'collapsed'}`}>
-    <div className={`quick-add-row v08-quick-row v021-quick-row ${beginnerMode ? 'simple-quick-row' : ''}`}>
-      {!beginnerMode && <div className="quick-copy">
-        <div className="eyebrow">QUICK DRAFT · ALL HEROES</div>
-        <strong>Search, press Enter, keep drafting. No mouse precision required.</strong>
-      </div>}
-      <div className="hero-search-wrap">
-        <div className="search-box hero-search">
-          <span>⌕</span>
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={event => setQuery(event.target.value)}
-            onKeyDown={handleSearchKeyDown}
-            placeholder="Hero or alias · wk · bm · ck · ss…"
-            autoComplete="off"
-          />
-          <kbd>/</kbd>
-        </div>
-        {!beginnerMode && <div className="quick-search-scope always-all" aria-label="Quick Draft behavior">
-          <span><b>ENTER</b> adds the first match as your selected target · <b>1–4</b> switches target</span>
-        </div>}
+    <div className="quick-add-row consolidated-quick-row">
+      <div className="search-box hero-search">
+        <span>⌕</span>
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={event => setQuery(event.target.value)}
+          onKeyDown={handleSearchKeyDown}
+          placeholder="Search hero or alias…"
+          autoComplete="off"
+        />
+        <kbd>/</kbd>
       </div>
-      <button className="browse-toggle" onClick={() => setExpanded(true)}>BROWSE ROSTER <b>⌄</b></button>
+      <label className="add-target-select">
+        <span>ADD TO</span>
+        <select value={quickTarget} onChange={event => setQuickTarget(event.target.value)}>
+          {quickTargets.filter(([key]) => !beginnerMode || key !== 'ban').map(([key,label]) => <option key={key} value={key}>{label}</option>)}
+        </select>
+      </label>
+      <button className="browse-toggle" onClick={() => setExpanded(true)}>ROSTER <b>⌄</b></button>
     </div>
 
-    <div className={`quick-target-picker ${beginnerMode ? 'simple-target-picker' : ''}`} aria-label="Quick add target">
-      {!beginnerMode && <span><b>ADD SEARCH RESULTS TO</b><small>1 = {quickTargets[0][1]} · 2 = {quickTargets[1][1]} · 3 = your pick · 4 = ban</small></span>}
-      <div>{quickTargets.filter(([key]) => !beginnerMode || key !== 'ban').map(([key,label,shortcut]) => <button key={key} className={quickTarget === key ? `active ${key}` : key} onClick={() => setQuickTarget(key)}>
-        {!beginnerMode && <kbd>{shortcut}</kbd>}{label}
-      </button>)}</div>
-      {!beginnerMode && <em>{quickTarget === 'ally'
-        ? `Adds to ${quickTargets[0][1]} · your selected side`
-        : quickTarget === 'enemy'
-          ? `Adds to ${quickTargets[1][1]} · opposing side`
-          : quickTarget === 'self'
-            ? 'Locks your hero and adds it to your team'
-            : 'Adds to the ban list'}</em>}
-    </div>
-
-    <div className={`quick-position-picker ${beginnerMode ? 'simple-position-picker' : ''}`} aria-label="Pick Advisor role filter">
-      <span><b>ROLE</b>{!beginnerMode && <small>Limits recommendations to role-relevant heroes</small>}</span>
-      {beginnerMode
-        ? <select className="simple-role-select" value={laneFilter} onChange={event => setLaneFilter?.(event.target.value)} aria-label="Choose your role">
-            {positionFilters.filter(([key]) => key !== 'roam').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        : <div>{positionFilters.map(([key, label]) => <button key={key} className={laneFilter === key ? 'active' : ''} onClick={() => setLaneFilter?.(key)}>{label}</button>)}</div>}
-    </div>
-
-    {(!beginnerMode || query.trim()) && <div className="quick-hero-shelf">
+    {query.trim() && <div className="quick-hero-shelf">
       <div className="quick-shelf-label">
         <span>{query ? 'MATCHES' : 'QUICK HEROES'}</span>
-        <small>{query ? `Enter adds #1 to ${quickTargets.find(([key]) => key === quickTarget)?.[1] || 'target'}` : 'click a tile to use the active Radiant/Dire target · hover for overrides'}</small>
+        <small>Enter adds the first match to {quickTargets.find(([key]) => key === quickTarget)?.[1] || 'the selected target'}.</small>
       </div>
       <div className="quick-hero-scroll">{quickHeroes.length
-        ? quickHeroes.map(hero => <QuickHero beginnerMode={beginnerMode} key={hero.id} hero={hero} state={stateForHero(hero.id)} onAction={runAction} quickTarget={quickTarget} targets={quickTargets} playerSide={playerSide} />)
+        ? quickHeroes.map(hero => <QuickHero key={hero.id} hero={hero} state={stateForHero(hero.id)} onAction={runAction} quickTarget={quickTarget} targets={quickTargets} playerSide={playerSide} />)
         : <div className="quick-no-results">No hero or alias matches that search.</div>}</div>
     </div>}
 
