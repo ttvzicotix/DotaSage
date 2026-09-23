@@ -685,3 +685,348 @@ body {
   background: rgba(225,90,93,.065) !important;
   color: #f1b0b2 !important;
 }
+
+
+/* v0.23 simple mode ------------------------------------------------------- */
+.experience-toggle{
+  min-height:30px;
+  border:1px solid rgba(166,108,255,.18);
+  border-radius:999px;
+  background:rgba(166,108,255,.04);
+  color:#bda9d8;
+  padding:5px 9px;
+  cursor:pointer;
+  font:700 9px Barlow Condensed;
+  letter-spacing:.06em;
+}
+.experience-toggle:hover{border-color:rgba(166,108,255,.34);color:#eadfff}
+
+.command-layout.beginner-layout{
+  grid-template-columns:minmax(300px,340px) minmax(0,1fr)!important;
+  gap:14px!important;
+  max-width:1500px!important;
+}
+.beginner-layout .left-rail{
+  display:block!important;
+}
+.beginner-layout .center-stage{
+  display:grid!important;
+  grid-template-rows:auto auto!important;
+  gap:12px!important;
+}
+.beginner-layout .draft-board{
+  position:sticky;
+  top:78px;
+}
+.beginner-layout .draft-head-actions{
+  gap:6px!important;
+}
+.beginner-layout .draft-head-actions .ghost-button{
+  min-width:auto!important;
+  padding:5px 8px!important;
+}
+.beginner-layout .side-selector{
+  margin-top:4px!important;
+}
+.beginner-layout .team-columns{
+  margin-top:8px!important;
+}
+.beginner-layout .team-block-head small,
+.beginner-layout .draft-slot.empty span{
+  font-size:11px!important;
+}
+.beginner-layout .locked-pick{
+  margin-top:8px!important;
+}
+.beginner-layout .locked-pick>span{
+  font-size:10px!important;
+}
+.beginner-layout .locked-pick p{
+  font-size:11px!important;
+  line-height:1.4!important;
+}
+
+.beginner-layout .hero-browser{
+  overflow:visible!important;
+}
+.beginner-layout .simple-quick-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:10px!important;
+  align-items:center!important;
+  padding:10px!important;
+}
+.beginner-layout .simple-quick-row .hero-search-wrap{
+  min-width:0;
+}
+.beginner-layout .simple-quick-row .browse-toggle{
+  white-space:nowrap;
+  min-height:40px!important;
+}
+.beginner-layout .hero-search input{
+  min-height:42px!important;
+  font-size:14px!important;
+}
+.beginner-layout .simple-target-picker{
+  display:block!important;
+  padding:8px 10px!important;
+}
+.beginner-layout .simple-target-picker>div{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:7px!important;
+}
+.beginner-layout .simple-target-picker button{
+  min-height:40px!important;
+  font-size:11px!important;
+}
+.beginner-layout .simple-position-picker{
+  display:grid!important;
+  grid-template-columns:54px minmax(0,260px)!important;
+  gap:10px!important;
+  align-items:center!important;
+  padding:8px 10px!important;
+}
+.beginner-layout .simple-position-picker>span{
+  display:block!important;
+}
+.beginner-layout .simple-role-select{
+  width:100%;
+  min-height:40px;
+  border:1px solid rgba(166,108,255,.18);
+  border-radius:10px;
+  background:#10131b;
+  color:#e8edf5;
+  padding:0 10px;
+  font-size:12px;
+  outline:none;
+}
+.beginner-layout .simple-role-select:focus{
+  border-color:rgba(166,108,255,.38);
+}
+.beginner-layout .quick-hero-shelf{
+  padding:8px 10px 10px!important;
+}
+.beginner-layout .quick-shelf-label{
+  margin-bottom:6px!important;
+}
+.beginner-layout .quick-hero-scroll{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:7px!important;
+}
+.beginner-layout .quick-hero-tile{
+  min-height:62px!important;
+}
+.beginner-layout .quick-hero-main{
+  grid-template-columns:54px minmax(0,1fr) auto!important;
+  gap:8px!important;
+}
+.beginner-layout .quick-hero-main>img{
+  width:54px!important;
+  height:54px!important;
+}
+.beginner-layout .quick-hero-name strong{
+  font-size:13px!important;
+}
+.beginner-layout .quick-hero-name small{
+  font-size:10px!important;
+}
+.beginner-layout .quick-target-hint{
+  font-size:10px!important;
+  padding:4px 7px!important;
+}
+
+.beginner-layout .advisor-panel{
+  padding:14px!important;
+}
+.beginner-layout .advisor-head{
+  margin-bottom:10px!important;
+}
+.beginner-layout .advisor-head .eyebrow{
+  font-size:10px!important;
+}
+.beginner-layout .advisor-head h2{
+  margin-top:3px!important;
+  font-size:27px!important;
+}
+.beginner-layout .simple-ranking-status{
+  color:#8b95a5;
+  font-size:11px;
+}
+.beginner-layout .advisor-results{
+  display:grid!important;
+  grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr)!important;
+  gap:10px!important;
+  align-items:start!important;
+}
+.beginner-layout .v021-primary-pick{
+  min-height:250px!important;
+}
+.beginner-layout .primary-pick-art{
+  min-width:180px!important;
+}
+.beginner-layout .primary-pick-title strong{
+  font-size:28px!important;
+}
+.beginner-layout .primary-pick-title>div>span{
+  font-size:10px!important;
+}
+.beginner-layout .simple-pick-summary{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+  margin:10px 0;
+}
+.beginner-layout .simple-pick-summary>span{
+  border:1px solid rgba(255,255,255,.055);
+  border-radius:10px;
+  padding:7px 8px;
+  background:rgba(255,255,255,.015);
+}
+.beginner-layout .simple-pick-summary small{
+  display:block;
+  color:#707b8d;
+  font:700 8px Barlow Condensed;
+  letter-spacing:.06em;
+}
+.beginner-layout .simple-pick-summary b{
+  display:block;
+  margin-top:2px;
+  color:#d8dee7;
+  font:700 14px Barlow Condensed;
+}
+.beginner-layout .compact-pick-list{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:6px!important;
+  margin:0!important;
+}
+.beginner-layout .compact-pick{
+  grid-template-columns:24px 50px minmax(0,1fr) 50px 14px!important;
+  min-height:54px!important;
+  padding:6px!important;
+}
+.beginner-layout .compact-pick>img{
+  width:50px!important;
+  height:36px!important;
+}
+.beginner-layout .compact-name strong{
+  font-size:13px!important;
+}
+.beginner-layout .compact-metric small{
+  font-size:9px!important;
+}
+.beginner-layout .compact-metric b{
+  font-size:14px!important;
+}
+
+/* Simple Game Plan keeps only decisions and the timer. */
+.simple-gameplan .gpv2-toolbar{
+  margin-bottom:10px!important;
+}
+.simple-gameplan .gpv2-toolbar>span{
+  display:block!important;
+  font-size:10px!important;
+}
+.simple-gameplan .gpv2-toolbar button:last-child{
+  display:none!important;
+}
+.simple-gameplan .gpv2-hero-brief{
+  min-height:132px!important;
+}
+.simple-gameplan .gpv2-command{
+  grid-template-columns:minmax(0,1fr) 360px!important;
+  gap:12px!important;
+}
+.simple-gameplan .gpv2-intel-rail{
+  position:static!important;
+  grid-template-columns:1fr!important;
+}
+.simple-gameplan .gpv2-brief-grid{
+  grid-template-columns:1fr 1fr!important;
+}
+.simple-gameplan .gpv2-coach-list{
+  grid-template-columns:1fr 1fr!important;
+}
+.simple-gameplan .gpv2-map-info{
+  grid-template-columns:1fr!important;
+}
+.simple-gameplan .gpv2-map-info strong{
+  font-size:16px!important;
+  line-height:1.35!important;
+}
+.gameplan-recovery{
+  width:min(760px,calc(100% - 28px));
+  margin:80px auto;
+  padding:28px;
+  border:1px solid rgba(225,90,93,.20);
+  border-radius:18px;
+  background:rgba(13,14,20,.96);
+  color:#eef2f7;
+}
+.gameplan-recovery strong{
+  display:block;
+  font-size:24px;
+}
+.gameplan-recovery p{
+  margin:8px 0 18px;
+  color:#9aa4b5;
+  font-size:14px;
+  line-height:1.5;
+}
+.gameplan-recovery button{
+  min-height:42px;
+  border:1px solid rgba(166,108,255,.28);
+  border-radius:10px;
+  background:rgba(166,108,255,.08);
+  color:#ddccff;
+  padding:8px 12px;
+  cursor:pointer;
+  font-weight:700;
+}
+
+@media(max-width:1180px){
+  .command-layout.beginner-layout{
+    grid-template-columns:1fr!important;
+  }
+  .beginner-layout .draft-board{
+    position:static!important;
+  }
+  .beginner-layout .advisor-results{
+    grid-template-columns:1fr!important;
+  }
+  .beginner-layout .compact-pick-list{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .simple-gameplan .gpv2-command{
+    grid-template-columns:1fr!important;
+  }
+  .simple-gameplan .gpv2-intel-rail{
+    grid-template-columns:1fr 1fr!important;
+  }
+}
+@media(max-width:760px){
+  .beginner-layout .simple-quick-row{
+    grid-template-columns:1fr!important;
+  }
+  .beginner-layout .simple-target-picker>div{
+    grid-template-columns:repeat(3,1fr)!important;
+  }
+  .beginner-layout .simple-position-picker{
+    grid-template-columns:1fr!important;
+  }
+  .beginner-layout .simple-role-select{
+    max-width:none;
+  }
+  .beginner-layout .quick-hero-scroll{
+    grid-template-columns:1fr 1fr!important;
+  }
+  .beginner-layout .compact-pick-list{
+    grid-template-columns:1fr!important;
+  }
+  .simple-gameplan .gpv2-brief-grid,
+  .simple-gameplan .gpv2-coach-list,
+  .simple-gameplan .gpv2-intel-rail{
+    grid-template-columns:1fr!important;
+  }
+}
