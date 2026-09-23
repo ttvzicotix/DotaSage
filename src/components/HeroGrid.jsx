@@ -97,7 +97,9 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
         return;
       }
       if (typing || event.altKey || event.ctrlKey || event.metaKey) return;
-      const byKey = { '1': 'ally', '2': 'enemy', '3': 'self', '4': 'ban' };
+      const byKey = beginnerMode
+        ? { '1': 'ally', '2': 'enemy', '3': 'self' }
+        : { '1': 'ally', '2': 'enemy', '3': 'self', '4': 'ban' };
       if (byKey[event.key]) {
         event.preventDefault();
         setQuickTarget(byKey[event.key]);
@@ -109,7 +111,7 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [setQuery]);
+  }, [setQuery, beginnerMode]);
 
   function runAction(hero, action) {
     onAction(hero, action);
@@ -156,7 +158,7 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
 
     <div className={`quick-target-picker ${beginnerMode ? 'simple-target-picker' : ''}`} aria-label="Quick add target">
       {!beginnerMode && <span><b>ADD SEARCH RESULTS TO</b><small>1 = {quickTargets[0][1]} · 2 = {quickTargets[1][1]} · 3 = your pick · 4 = ban</small></span>}
-      <div>{quickTargets.map(([key,label,shortcut]) => <button key={key} className={quickTarget === key ? `active ${key}` : key} onClick={() => setQuickTarget(key)}>
+      <div>{quickTargets.filter(([key]) => !beginnerMode || key !== 'ban').map(([key,label,shortcut]) => <button key={key} className={quickTarget === key ? `active ${key}` : key} onClick={() => setQuickTarget(key)}>
         {!beginnerMode && <kbd>{shortcut}</kbd>}{label}
       </button>)}</div>
       {!beginnerMode && <em>{quickTarget === 'ally'
@@ -170,7 +172,11 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
 
     <div className={`quick-position-picker ${beginnerMode ? 'simple-position-picker' : ''}`} aria-label="Pick Advisor role filter">
       <span><b>ROLE</b>{!beginnerMode && <small>Limits recommendations to role-relevant heroes</small>}</span>
-      <div>{positionFilters.map(([key, label]) => <button key={key} className={laneFilter === key ? 'active' : ''} onClick={() => setLaneFilter?.(key)}>{label}</button>)}</div>
+      {beginnerMode
+        ? <select className="simple-role-select" value={laneFilter} onChange={event => setLaneFilter?.(event.target.value)} aria-label="Choose your role">
+            {positionFilters.filter(([key]) => key !== 'roam').map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+        : <div>{positionFilters.map(([key, label]) => <button key={key} className={laneFilter === key ? 'active' : ''} onClick={() => setLaneFilter?.(key)}>{label}</button>)}</div>}
     </div>
 
     {(!beginnerMode || query.trim()) && <div className="quick-hero-shelf">
