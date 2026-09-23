@@ -22,6 +22,7 @@ import { fetchProviderStatus } from './services/providerStatus';
 import DraftFlowBar from './components/DraftFlowBar';
 import { decodeDraftState, draftPayload, encodeDraftState } from './utils/draftShare';
 import { fetchRoleMeta } from './services/roleMeta';
+import { matchesLane } from './engine/roleEligibility';
 
 const emptyDraft = () => ({ allies: [], enemies: [], bans: [], self: null });
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -43,22 +44,6 @@ function metaScoreFromRole(row, fallbackStat) {
   return clamp(5 + (wr - 0.5) * 90 * (0.7 + sampleLift * 0.3), 0, 10);
 }
 
-function matchesLane(hero, lane) {
-  if (lane === 'all') return true;
-  const lanes = (hero.lanes || []).map(x => String(x).toLowerCase());
-  const roles = (hero.roles || []).map(x => String(x).toLowerCase());
-  const hints = (hero.roleHints || []).map(x => String(x).toLowerCase());
-  const has = role => roles.includes(role);
-  const isSupport = has('support') || hints.includes('support');
-  if (lane === 'safe') return has('carry') || hints.includes('carry');
-  if (lane === 'mid') return lanes.includes('mid') || hints.includes('mid') || (has('carry') && has('nuker') && !isSupport);
-  if (lane === 'off') return lanes.includes('off') || hints.includes('offlane') || (has('durable') && (has('initiator') || has('disabler')));
-  if (lane === 'support4') return isSupport && (lanes.includes('roam') || lanes.includes('off') || has('disabler') || has('initiator') || has('escape') || has('nuker'));
-  if (lane === 'support5') return isSupport && (lanes.includes('safe') || (!has('carry') && !has('escape')));
-  if (lane === 'jungle') return lanes.includes('jungle') || hints.includes('jungle');
-  if (lane === 'roam') return lanes.includes('roam') || (isSupport && (has('escape') || has('initiator')));
-  return true;
-}
 
 function localPlayerSide(state) {
   const raw = String(state?.player?.team_name ?? state?.player?.team ?? '').toLowerCase();
@@ -524,6 +509,12 @@ export default function App() {
         return { hero: enemy, provider: row?._provider || null, ...result };
       });
       const enemyScore = aggregateEnemyScore(pairScores);
+      const verifiedCounterPairs = pairScores.filter(row => Number(row?.games || 0) > 0 && Number(row?.confidence || 0) > 0);
+      const counterEvidenceCount = verifiedCounterPairs.length;
+      const counterCoverage = draft.enemies.length ? counterEvidenceCount / draft.enemies.length : 0;
+      const worstCounterScore = verifiedCounterPairs.length
+        ? Math.min(...verifiedCounterPairs.map(row => Number(row.score || 0)))
+        : 0;
       const teammates = draft.allies.filter(a => a.id !== hero.id);
       const modeledSynergyScore = compositionSynergyScore(hero, teammates);
       const empiricalSynergyPairs = teammates.map(ally => {
@@ -550,8 +541,28 @@ export default function App() {
       const metaProvider = roleMetaRow?._provider || 'OpenDota';
       const metaGames = Number(roleMetaRow?.games || 0);
       const metaPosition = roleMetaRow?._position || null;
-      const draftFit = draftFitScore({ enemyScore, synergyScore, teamFit, metaScore });
-      const overall = overallRecommendation({ enemyScore, synergyScore, teamFit, personalFit: personal.score, metaScore });
+      const draftFit = draftFitScore({
+        enemyScore,
+        counterEvidenceCount,
+        counterCoverage,
+        worstCounterScore,
+        synergyScore,
+        teamFit,
+        metaScore,
+        counterEvidenceCount,
+        counterCoverage,
+        worstCounterScore,
+      });
+      const overall = overallRecommendation({
+        enemyScore,
+        synergyScore,
+        teamFit,
+        personalFit: personal.score,
+        metaScore,
+        counterEvidenceCount,
+        counterCoverage,
+        worstCounterScore,
+      });
       scores.set(hero.id, {
         enemyScore,
         synergyScore,

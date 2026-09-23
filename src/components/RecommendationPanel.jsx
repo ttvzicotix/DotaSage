@@ -172,8 +172,8 @@ export default function RecommendationPanel({
       <AdvisorSignals entry={top} enemyCount={enemyCount} patch={patch} />
     </> : <div className="empty-state"><strong>No eligible heroes for this position.</strong><span>Try Flex or another role.</span></div>}
     <div className="recommend-foot v08-recommend-foot">
-      <span><b>ADVANTAGE MODE</b> 60% empirical counters · 35% ally synergy (empirical when available) · 5% meta</span>
-      <span><b>CONFIDENCE</b> reflects evidence coverage/sample size, not predicted win chance</span>
+      <span><b>BEST PICK</b> counter-first: 82% aggregate counters + 8% worst-matchup risk · 7% ally fit · 3% meta</span>
+      <span><b>CONFIDENCE</b> reflects matchup coverage/sample size; missing enemies lower the score instead of counting as neutral</span>
     </div>
   </section>;
 }

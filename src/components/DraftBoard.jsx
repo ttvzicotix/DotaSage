@@ -8,17 +8,17 @@ function DraftSlot({ hero, onRemove }) {
   );
 }
 
-function EmptySlot({ type, index }) {
-  return <div className="draft-slot empty"><i>{index}</i><span>{type === 'ally' ? 'Ally' : 'Enemy'}</span></div>;
+function EmptySlot({ side, index }) {
+  return <div className="draft-slot empty"><i>{index}</i><span>{side}</span></div>;
 }
 
-function TeamBlock({ label, type, heroes, count, onRemove }) {
+function TeamBlock({ label, type, side, heroes, count, onRemove }) {
   return (
     <div className={`team-block ${type}`}>
       <div className="team-block-head"><span>{label}</span><small>{heroes.length}/{count}</small></div>
       <div className="slot-stack">
         {heroes.map(hero => <DraftSlot key={hero.id} hero={hero} onRemove={onRemove} />)}
-        {Array.from({ length: Math.max(0, count - heroes.length) }).map((_, i) => <EmptySlot key={i} type={type} index={heroes.length + i + 1} />)}
+        {Array.from({ length: Math.max(0, count - heroes.length) }).map((_, i) => <EmptySlot key={i} side={side} index={heroes.length + i + 1} />)}
       </div>
     </div>
   );
@@ -71,11 +71,11 @@ export default function DraftBoard({ draft, onRemove, onClear, onOpenGamePlan, o
       </div>}
       <div className="team-columns map-side-columns">
         {playerSide === 'radiant' ? <>
-          <TeamBlock label="RADIANT · YOUR TEAM" type="ally" heroes={draft.allies} count={5} onRemove={onRemove} />
-          <TeamBlock label="DIRE · ENEMY" type="enemy" heroes={draft.enemies} count={5} onRemove={onRemove} />
+          <TeamBlock label="RADIANT · YOUR TEAM" type="ally" side="Radiant" heroes={draft.allies} count={5} onRemove={onRemove} />
+          <TeamBlock label="DIRE · ENEMY" type="enemy" side="Dire" heroes={draft.enemies} count={5} onRemove={onRemove} />
         </> : <>
-          <TeamBlock label="RADIANT · ENEMY" type="enemy" heroes={draft.enemies} count={5} onRemove={onRemove} />
-          <TeamBlock label="DIRE · YOUR TEAM" type="ally" heroes={draft.allies} count={5} onRemove={onRemove} />
+          <TeamBlock label="RADIANT · ENEMY" type="enemy" side="Radiant" heroes={draft.enemies} count={5} onRemove={onRemove} />
+          <TeamBlock label="DIRE · YOUR TEAM" type="ally" side="Dire" heroes={draft.allies} count={5} onRemove={onRemove} />
         </>}
       </div>
       <div className="ban-block compact-bans">
