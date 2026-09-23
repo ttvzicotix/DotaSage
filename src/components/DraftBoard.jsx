@@ -61,7 +61,7 @@ export default function DraftBoard({ beginnerMode = true, draft, onRemove, onCle
           <TeamBlock label="DIRE · YOUR TEAM" type="ally" side="Dire" heroes={draft.allies} count={5} onRemove={onRemove} />
         </>}
       </div>
-      {(!beginnerMode || draft.bans.length > 0) && <div className="ban-block compact-bans">
+      {draft.bans.length > 0 && <div className="ban-block compact-bans">
         <div className="team-block-head"><span>Bans</span><small>{draft.bans.length} · free</small></div>
         <div className="ban-list">
           {draft.bans.length ? draft.bans.slice(-8).map(hero => <button key={hero.id} onClick={() => onRemove(hero.id)}>{hero.localized_name}<b>×</b></button>) : <span className="empty-inline">No bans</span>}
@@ -73,7 +73,7 @@ export default function DraftBoard({ beginnerMode = true, draft, onRemove, onCle
           <div className="lock-hero"><img src={draft.self.portrait} alt="" /><strong>{draft.self.localized_name}</strong></div>
           <button className="primary-button" onClick={onOpenGamePlan}>{complete ? 'GAME PLAN' : 'PREVIEW GAME PLAN'} <b>→</b></button>
           {!beginnerMode && !complete && <small className="draft-readiness">Pick locked. Complete both lineups to enter Game Plan automatically.</small>}
-        </> : beginnerMode ? <p>Choose your hero with ★ PICK.</p> : <p>Lock your hero when ready. If both lineups fill first, DotaSage treats your fifth ally as your pick.</p>}
+        </> : <p>Choose your hero with Add to → My Pick.</p>}
       </div>
     </section>
   );
