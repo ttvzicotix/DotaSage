@@ -88,6 +88,10 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
   }, [quickTarget]);
 
   useEffect(() => {
+    if (beginnerMode && quickTarget === 'ban') setQuickTarget('enemy');
+  }, [beginnerMode, quickTarget]);
+
+  useEffect(() => {
     const handleKey = event => {
       const tag = String(event.target?.tagName || '').toLowerCase();
       const typing = tag === 'input' || tag === 'textarea' || event.target?.isContentEditable;
