@@ -160,24 +160,27 @@ export default function RecommendationPanel({
     ? `${enemyCount}/5 enemies · ${allyCount}/5 allies`
     : `${allyCount}/5 allies · no enemy counters yet`;
   return <section className="recommend-panel glass-panel advisor-panel">
-    <div className="recommend-head advisor-head">
-      <div><div className="eyebrow">{beginnerMode ? `BEST PICK · ${laneLabel}` : `PICK ADVISOR · ${laneLabel} · ${playerSide.toUpperCase()}`}</div><h2>{beginnerMode ? 'Recommended pick' : 'What should you pick?'}</h2></div>
-      {!beginnerMode && <div className="advisor-live-block">
-        <div className={`matrix-indicator ${matrixLoading ? 'busy' : ''}`}><i />{matrixLoading ? 'Re-ranking…' : 'Live draft ranking'}</div>
-        <small className="draft-context">USES {draftContext.toUpperCase()}</small>
-      </div>}
-      {beginnerMode && matrixLoading && <div className="simple-ranking-status">Updating…</div>}
+    <div className="recommend-head advisor-head consolidated-advisor-head">
+      <div>
+        <div className="eyebrow">{beginnerMode ? 'COUNTER-FIRST ADVISOR' : `PICK ADVISOR · ${playerSide.toUpperCase()}`}</div>
+        <h2>{beginnerMode ? 'Recommended pick' : 'Draft recommendation'}</h2>
+      </div>
+      <div className="recommend-selects">
+        <label><span>ROLE</span><select value={laneFilter} onChange={event => setLaneFilter(event.target.value)}>
+          {positionOptions.filter(([key]) => key !== 'jungle' && key !== 'roam').map(([key,label]) => <option key={key} value={key}>{label}</option>)}
+        </select></label>
+        {!beginnerMode && <label><span>FOCUS</span><select value={advisorMode} onChange={event => setAdvisorMode(event.target.value)}>
+          {advisorModes.map(([key,label]) => <option key={key} value={key}>{label}</option>)}
+        </select></label>}
+      </div>
+      {matrixLoading && <div className="simple-ranking-status">Updating…</div>}
     </div>
-    {!beginnerMode && <div className="advisor-controls">
-      <div className="advisor-modes">{advisorModes.map(([key,label]) => <button key={key} className={advisorMode === key ? 'active' : ''} onClick={() => setAdvisorMode(key)}>{label}</button>)}</div>
-      <div className="position-picker compact-position-picker"><span>YOUR POSITION</span><div>{positionOptions.map(([key,label]) => <button key={key} className={laneFilter === key ? 'active' : ''} onClick={() => setLaneFilter(key)}>{label}</button>)}</div></div>
-    </div>}
     {top ? <>
       <div className="advisor-results">
         <PrimaryPick beginnerMode={beginnerMode} entry={top} onPick={onPick} mode={advisorMode} draftComplete={draftComplete} enemyCount={enemyCount} patch={patch} providerStatus={providerStatus} />
         <div className="compact-pick-list">{recommendations.slice(1,beginnerMode ? 5 : 7).map((entry,i)=><CompactPick beginnerMode={beginnerMode} key={entry.hero.id} entry={entry} rank={i+2} onPick={onPick} enemyCount={enemyCount} />)}</div>
       </div>
-      {!beginnerMode && <AdvisorSignals entry={top} enemyCount={enemyCount} patch={patch} />}
+      {!beginnerMode && <details className="recommend-evidence-details"><summary>WHY THIS PICK <span>evidence & matchup detail</span></summary><AdvisorSignals entry={top} enemyCount={enemyCount} patch={patch} /></details>}
     </> : <div className="empty-state"><strong>No eligible heroes for this position.</strong><span>Try Flex or another role.</span></div>}
     {!beginnerMode && <div className="recommend-foot v08-recommend-foot">
       <span><b>BEST PICK</b> counter-first: 82% aggregate counters + 8% worst-matchup risk · 7% ally fit · 3% meta</span>
