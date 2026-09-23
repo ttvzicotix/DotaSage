@@ -114,17 +114,70 @@ export function compositionFit(candidate, allies) {
 // Same-team synergy can be empirical when STRATZ pair data is available, with the
 // role-composition model retained as a fallback. Counter evidence keeps the larger
 // share and meta remains a tiebreaker. Personal history does not rank BEST PICK.
-export function draftFitScore({ enemyScore, synergyScore = 0, teamFit, metaScore = 5 }) {
-  const counterAsTen = clamp((enemyScore + 10) / 2, 0, 10);
+export function draftFitScore({
+  enemyScore,
+  synergyScore = 0,
+  teamFit,
+  metaScore = 5,
+  counterEvidenceCount = 0,
+  counterCoverage = 0,
+  worstCounterScore = 0,
+}) {
   const resolvedSynergy = Number.isFinite(synergyScore) ? synergyScore : ((Number(teamFit ?? 5) - 5) * 2);
   const synergyAsTen = clamp((resolvedSynergy + 10) / 2, 0, 10);
-  return clamp(counterAsTen * 0.60 + synergyAsTen * 0.35 + metaScore * 0.05, 0, 10);
+
+  // Before enemy evidence exists, keep the advisor useful without pretending
+  // neutral/missing counter data is a positive signal.
+  if (!counterEvidenceCount) {
+    return clamp(synergyAsTen * 0.70 + metaScore * 0.30, 0, 10);
+  }
+
+  const counterAsTen = clamp((enemyScore + 10) / 2, 0, 10);
+  const worstAsTen = clamp((Number(worstCounterScore || 0) + 10) / 2, 0, 10);
+  const coverage = clamp(Number(counterCoverage || 0), 0, 1);
+
+  // BEST PICK is deliberately counter-first. The aggregate counter score is the
+  // dominant signal; the worst verified enemy matchup adds a risk guard so one
+  // severe liability cannot be washed out by softer positives elsewhere.
+  let score =
+    counterAsTen * 0.82 +
+    worstAsTen * 0.08 +
+    synergyAsTen * 0.07 +
+    metaScore * 0.03;
+
+  // Partial evidence should reduce confidence/ranking rather than silently treating
+  // missing matchups as neutral. At full coverage there is no penalty.
+  score -= (1 - coverage) * 0.85;
+
+  // Extra guardrail for a truly bad direct matchup.
+  if (worstCounterScore < -4) {
+    score -= Math.min(1.5, (Math.abs(worstCounterScore) - 4) * 0.22);
+  }
+
+  return clamp(score, 0, 10);
 }
 
 // Personal familiarity is still advisory. It is only used by FOR YOU / blended display,
 // never to sort the default BEST PICK list.
-export function overallRecommendation({ enemyScore, synergyScore = 0, teamFit, personalFit, metaScore = 5 }) {
-  const draftFit = draftFitScore({ enemyScore, synergyScore, teamFit, metaScore });
+export function overallRecommendation({
+  enemyScore,
+  synergyScore = 0,
+  teamFit,
+  personalFit,
+  metaScore = 5,
+  counterEvidenceCount = 0,
+  counterCoverage = 0,
+  worstCounterScore = 0,
+}) {
+  const draftFit = draftFitScore({
+    enemyScore,
+    synergyScore,
+    teamFit,
+    metaScore,
+    counterEvidenceCount,
+    counterCoverage,
+    worstCounterScore,
+  });
   const personalAsTen = clamp(personalFit / 10, 0, 10);
-  return clamp(draftFit * 0.92 + personalAsTen * 0.08, 0, 10);
+  return clamp(draftFit * 0.94 + personalAsTen * 0.06, 0, 10);
 }
