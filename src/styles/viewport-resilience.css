@@ -1417,3 +1417,82 @@ body {
   .recommend-selects select{width:100%;min-width:0}
   .advanced-section-body>.draft-insights{grid-template-columns:1fr!important}
 }
+
+
+/* v0.24 finishing polish */
+.experience-control{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:0 2px;
+}
+.experience-control>span{
+  color:#657084;
+  font:700 8px Barlow Condensed;
+  letter-spacing:.10em;
+}
+.topbar-actions .experience-switch{
+  flex:0 0 auto;
+}
+.simple-pick-summary.advanced-summary{
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+}
+.consolidated-compact-pick{
+  grid-template-columns:24px 50px minmax(0,1fr) 50px 14px!important;
+  min-height:54px!important;
+  padding:6px!important;
+}
+.consolidated-compact-pick>img{
+  width:50px!important;
+  height:36px!important;
+}
+.advanced-layout .advisor-results,
+.beginner-layout .advisor-results{
+  display:grid!important;
+  grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr)!important;
+  gap:10px!important;
+  align-items:start!important;
+}
+.advanced-layout .compact-pick-list,
+.beginner-layout .compact-pick-list{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:6px!important;
+  margin:0!important;
+}
+.advanced-layout .advisor-panel,
+.beginner-layout .advisor-panel{
+  padding:14px!important;
+}
+.advanced-layout .primary-pick-title strong,
+.beginner-layout .primary-pick-title strong{
+  font-size:27px!important;
+}
+.advanced-layout .v021-primary-pick,
+.beginner-layout .v021-primary-pick{
+  min-height:240px!important;
+}
+.advanced-layout .primary-pick-art,
+.beginner-layout .primary-pick-art{
+  min-width:170px!important;
+}
+@media(max-width:1180px){
+  .advanced-layout .advisor-results,
+  .beginner-layout .advisor-results{
+    grid-template-columns:1fr!important;
+  }
+  .advanced-layout .compact-pick-list,
+  .beginner-layout .compact-pick-list{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:760px){
+  .experience-control>span{display:none}
+  .advanced-layout .compact-pick-list,
+  .beginner-layout .compact-pick-list{
+    grid-template-columns:1fr!important;
+  }
+  .simple-pick-summary.advanced-summary{
+    grid-template-columns:1fr 1fr!important;
+  }
+}
