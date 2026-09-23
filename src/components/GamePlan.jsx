@@ -675,7 +675,7 @@ export default function GamePlan({
   const dire = playerSide === 'dire' ? draft.allies : draft.enemies;
   const ratingMap = side => side === playerSide ? lineupRatings?.allies : lineupRatings?.enemies;
 
-  return <main className="gpv2 game-plan">
+  return <main className={`gpv2 game-plan ${beginnerMode ? 'simple-gameplan' : 'advanced-gameplan'}`}>
     <div className="gpv2-toolbar"><button onClick={onBack}>← BACK TO DRAFT</button><span>GAME PLAN · PATCH {patch?.id || '—'}</span><button onClick={() => document.getElementById('post-match-review')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>POST-MATCH ↓</button></div>
 
     <section className="gpv2-hero-brief">
