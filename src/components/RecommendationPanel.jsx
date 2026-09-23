@@ -1,5 +1,3 @@
-import ScorePill from './ScorePill';
-
 export const positionOptions = [
   ['all', 'FLEX'], ['safe', 'SAFE · 1'], ['mid', 'MID · 2'], ['off', 'OFF · 3'],
   ['support4', 'SUPPORT · 4'], ['support5', 'HARD SUP · 5'], ['jungle', 'JUNGLE'], ['roam', 'ROAM'],
@@ -62,24 +60,13 @@ function PrimaryPick({ beginnerMode = true, entry, onPick, mode, draftComplete, 
         <b>{score.draftFit.toFixed(1)}</b>
       </div>
       <p>{reasonFor(entry, mode)}{!beginnerMode && (personal?.games ? ` · you: ${personal.games} games` : ' · low personal experience')}</p>
-      {beginnerMode ? <div className="simple-pick-summary">
+      <div className={`simple-pick-summary ${beginnerMode ? '' : 'advanced-summary'}`}>
         <span><small>COUNTER</small><b className={score.enemyScore >= 0 ? 'positive' : 'negative'}>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b></span>
+        {!beginnerMode && <span><small>SYNERGY</small><b className={score.synergyScore >= 0 ? 'positive' : 'negative'}>{score.synergyScore > 0 ? '+' : ''}{score.synergyScore.toFixed(1)}</b></span>}
+        {!beginnerMode && <span><small>META</small><b>{score.metaScore.toFixed(1)}</b></span>}
         <span><small>CONFIDENCE</small><b>{evidence.label}</b></span>
         <span><small>COVERAGE</small><b>{evidence.verified.length}/{Math.max(enemyCount, 0)}</b></span>
-      </div> : <>
-        <div className="advisor-score-row">
-          <ScorePill label="VS" value={score.enemyScore} signed />
-          <ScorePill label="SYN" value={score.synergyScore} signed />
-          <ScorePill label="META" value={score.metaScore} />
-          <ScorePill label="YOU" value={score.personalFit / 10} />
-        </div>
-        <div className="pick-evidence-row">
-          <span><small>COUNTER DATA</small><b>{sourceText}</b></span>
-          <span><small>ALLY FIT</small><b>{score.synergySource === 'empirical' ? `${(score.synergyProviders || []).join(' + ') || 'STRATZ'} · ${Number(score.synergyGames || 0).toLocaleString()} samples` : 'ROLE MODEL FALLBACK'}</b></span>
-          <span><small>COVERAGE</small><b>{evidence.verified.length}/{Math.max(enemyCount, 0)} enemies</b></span>
-          <span><small>PATCH</small><b>{patch?.id || '—'}</b></span>
-        </div>
-      </>}
+      </div>
       <button onClick={() => onPick(hero, 'self')}>{beginnerMode ? 'PICK HERO' : `LOCK PICK${draftComplete ? ' · GAME PLAN READY' : ''}`} <span>→</span></button>
     </div>
   </article>;
@@ -124,16 +111,13 @@ function AdvisorSignals({ entry, enemyCount, patch }) {
   </div>;
 }
 
-function CompactPick({ beginnerMode = true, entry, rank, onPick, enemyCount }) {
-  const { hero, score, personal } = entry;
-  const evidence = evidenceFor(entry, enemyCount);
-  return <button className="compact-pick" onClick={() => onPick(hero, 'self')}>
-    <span className="compact-rank">{rank}</span><img src={hero.portrait} alt="" />
-    <span className="compact-name"><strong>{hero.localized_name}</strong>{!beginnerMode && <small>{personal?.games ? `${personal.games} games` : 'new / low sample'}</small>}</span>
-    {!beginnerMode && <span className="compact-metric"><small>DRAFT</small><b>{score.draftFit.toFixed(1)}</b></span>}
+function CompactPick({ entry, rank, onPick }) {
+  const { hero, score } = entry;
+  return <button className="compact-pick consolidated-compact-pick" onClick={() => onPick(hero, 'self')}>
+    <span className="compact-rank">{rank}</span>
+    <img src={hero.portrait} alt="" />
+    <span className="compact-name"><strong>{hero.localized_name}</strong></span>
     <span className="compact-metric"><small>VS</small><b className={score.enemyScore >= 0 ? 'positive' : 'negative'}>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b></span>
-    {!beginnerMode && <span className="compact-metric syn-metric"><small>SYN</small><b className={score.synergyScore >= 0 ? 'positive' : 'negative'}>{score.synergyScore > 0 ? '+' : ''}{score.synergyScore.toFixed(1)}</b></span>}
-    {!beginnerMode && <span className={`compact-confidence ${evidence.label.toLowerCase()}`} title={`${evidence.verified.length}/${Math.max(enemyCount, 1)} enemy matchups covered`}>{evidence.label}</span>}
     <span className="compact-arrow">→</span>
   </button>;
 }
@@ -160,28 +144,33 @@ export default function RecommendationPanel({
     ? `${enemyCount}/5 enemies · ${allyCount}/5 allies`
     : `${allyCount}/5 allies · no enemy counters yet`;
   return <section className="recommend-panel glass-panel advisor-panel">
-    <div className="recommend-head advisor-head">
-      <div><div className="eyebrow">{beginnerMode ? `BEST PICK · ${laneLabel}` : `PICK ADVISOR · ${laneLabel} · ${playerSide.toUpperCase()}`}</div><h2>{beginnerMode ? 'Recommended pick' : 'What should you pick?'}</h2></div>
-      {!beginnerMode && <div className="advisor-live-block">
-        <div className={`matrix-indicator ${matrixLoading ? 'busy' : ''}`}><i />{matrixLoading ? 'Re-ranking…' : 'Live draft ranking'}</div>
-        <small className="draft-context">USES {draftContext.toUpperCase()}</small>
-      </div>}
-      {beginnerMode && matrixLoading && <div className="simple-ranking-status">Updating…</div>}
+    <div className="recommend-head advisor-head consolidated-advisor-head">
+      <div>
+        <div className="eyebrow">{beginnerMode ? 'COUNTER-FIRST ADVISOR' : `PICK ADVISOR · ${playerSide.toUpperCase()}`}</div>
+        <h2>{beginnerMode ? 'Recommended pick' : 'Draft recommendation'}</h2>
+      </div>
+      <div className="recommend-selects">
+        <label><span>ROLE</span><select value={laneFilter} onChange={event => setLaneFilter(event.target.value)}>
+          {positionOptions.filter(([key]) => key !== 'jungle' && key !== 'roam').map(([key,label]) => <option key={key} value={key}>{label}</option>)}
+        </select></label>
+        {!beginnerMode && <label><span>FOCUS</span><select value={advisorMode} onChange={event => setAdvisorMode(event.target.value)}>
+          {advisorModes.map(([key,label]) => <option key={key} value={key}>{label}</option>)}
+        </select></label>}
+      </div>
+      {matrixLoading && <div className="simple-ranking-status">Updating…</div>}
     </div>
-    {!beginnerMode && <div className="advisor-controls">
-      <div className="advisor-modes">{advisorModes.map(([key,label]) => <button key={key} className={advisorMode === key ? 'active' : ''} onClick={() => setAdvisorMode(key)}>{label}</button>)}</div>
-      <div className="position-picker compact-position-picker"><span>YOUR POSITION</span><div>{positionOptions.map(([key,label]) => <button key={key} className={laneFilter === key ? 'active' : ''} onClick={() => setLaneFilter(key)}>{label}</button>)}</div></div>
-    </div>}
     {top ? <>
       <div className="advisor-results">
         <PrimaryPick beginnerMode={beginnerMode} entry={top} onPick={onPick} mode={advisorMode} draftComplete={draftComplete} enemyCount={enemyCount} patch={patch} providerStatus={providerStatus} />
-        <div className="compact-pick-list">{recommendations.slice(1,beginnerMode ? 5 : 7).map((entry,i)=><CompactPick beginnerMode={beginnerMode} key={entry.hero.id} entry={entry} rank={i+2} onPick={onPick} enemyCount={enemyCount} />)}</div>
+        <div className="compact-pick-list">{recommendations.slice(1,beginnerMode ? 5 : 7).map((entry,i)=><CompactPick key={entry.hero.id} entry={entry} rank={i+2} onPick={onPick} />)}</div>
       </div>
-      {!beginnerMode && <AdvisorSignals entry={top} enemyCount={enemyCount} patch={patch} />}
+      {!beginnerMode && <details className="recommend-evidence-details"><summary>WHY THIS PICK <span>evidence & matchup detail</span></summary>
+        <AdvisorSignals entry={top} enemyCount={enemyCount} patch={patch} />
+        <div className="recommend-foot v08-recommend-foot">
+          <span><b>BEST PICK</b> counter-first: 82% aggregate counters + 8% worst-matchup risk · 7% ally fit · 3% meta</span>
+          <span><b>CONFIDENCE</b> reflects matchup coverage/sample size; missing enemies lower the score instead of counting as neutral</span>
+        </div>
+      </details>}
     </> : <div className="empty-state"><strong>No eligible heroes for this position.</strong><span>Try Flex or another role.</span></div>}
-    {!beginnerMode && <div className="recommend-foot v08-recommend-foot">
-      <span><b>BEST PICK</b> counter-first: 82% aggregate counters + 8% worst-matchup risk · 7% ally fit · 3% meta</span>
-      <span><b>CONFIDENCE</b> reflects matchup coverage/sample size; missing enemies lower the score instead of counting as neutral</span>
-    </div>}
   </section>;
 }

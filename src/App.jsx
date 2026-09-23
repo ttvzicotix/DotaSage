@@ -5,6 +5,7 @@ import { fetchHeroes, fetchHeroMatchups, fetchHeroStats, fetchPlayer, fetchPlaye
 import { buildPersonalScores } from './engine/playerModel';
 import { aggregateEnemyScore, aggregateSynergyScore, compositionFit, compositionSynergyScore, draftFitScore, heroBaseWinRate, overallRecommendation, pairCounterScore, pairSynergyScore } from './engine/scoring';
 import PlayerProfile from './components/PlayerProfile';
+import CompactPlayerConnect from './components/CompactPlayerConnect';
 import DraftBoard from './components/DraftBoard';
 import HeroGrid from './components/HeroGrid';
 import RecommendationPanel from './components/RecommendationPanel';
@@ -20,7 +21,6 @@ import { fetchLocalGameState } from './services/localGsi';
 import { fetchOnlineLive } from './services/onlineLive';
 import useCurrentPatch from './hooks/useCurrentPatch';
 import { fetchProviderStatus } from './services/providerStatus';
-import DraftFlowBar from './components/DraftFlowBar';
 import { decodeDraftState, draftPayload, encodeDraftState } from './utils/draftShare';
 import { fetchRoleMeta } from './services/roleMeta';
 import { matchesLane } from './engine/roleEligibility';
@@ -722,12 +722,10 @@ export default function App() {
     });
   }
 
-  function toggleExperienceMode() {
-    setBeginnerMode(current => {
-      const next = !current;
-      try { localStorage.setItem('dotasage:experience-mode', next ? 'simple' : 'advanced'); } catch {}
-      return next;
-    });
+  function setExperienceMode(mode) {
+    const next = mode !== 'advanced';
+    setBeginnerMode(next);
+    try { localStorage.setItem('dotasage:experience-mode', next ? 'simple' : 'advanced'); } catch {}
   }
 
   async function copyDraftLink() {
@@ -787,7 +785,7 @@ export default function App() {
 
   if (view === 'gameplan' && draft.self) return <div className="app-shell gameplan-shell">
     <div className="ambient-grid" />
-    <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} beginnerMode={beginnerMode} onToggleMode={toggleExperienceMode} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
+    <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} beginnerMode={beginnerMode} onSetMode={setExperienceMode} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
     <GamePlanBoundary onBack={() => setView('draft')}>
       <GamePlan beginnerMode={beginnerMode} patch={patch} onlineLiveMatch={onlineLiveMatch} draft={draft} playerSide={playerSide} laneFilter={laneFilter} lineupRatings={lineupRatings} selectedScore={selectedScore} pairBreakdown={selectedPairs} pairLoading={selectedPairLoading} pairError={selectedPairError && !selectedPairs.some(x => x.games > 0)} positionLabel={laneLabels[laneFilter]} itemPopularity={itemPopularity} itemConstants={itemConstants} itemLoading={itemLoading} onBack={() => setView('draft')} />
     </GamePlanBoundary>
@@ -799,31 +797,33 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="ambient-grid" />
-      <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} beginnerMode={beginnerMode} onToggleMode={toggleExperienceMode} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
+      <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} beginnerMode={beginnerMode} onSetMode={setExperienceMode} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
 
-      <div className={`command-layout ${beginnerMode ? 'beginner-layout' : 'advanced-layout'}`}>
+      <div className={`command-layout consolidated-layout ${beginnerMode ? 'beginner-layout' : 'advanced-layout'}`}>
         <aside className="left-rail">
-          {!beginnerMode && <PlayerProfile profile={DEFAULT_PROFILE} player={player} loading={profileLoading} personalSummary={personalSummary} winLoss={winLoss} recentSummary={recent} onOpenProfile={() => setProfileOpen(true)} />}
+          <CompactPlayerConnect accountId={DEFAULT_PROFILE.accountId} />
           <DraftBoard beginnerMode={beginnerMode} draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; lastLocalDraftSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} onCopyLink={copyDraftLink} copyStatus={copyDraftStatus} playerSide={playerSide} onSideChange={changePlayerSide} onSwapTeams={swapTeams} onlineLiveEnabled={onlineLiveEnabled} onlineLiveStatus={onlineLiveStatus} onToggleOnlineLive={toggleOnlineLive} liveDraftEnabled={localDraftEnabled} liveDraftStatus={localDraftStatus} onToggleLiveDraft={toggleLocalDraftSync} />
         </aside>
 
         <main className="center-stage">
-          {!beginnerMode && <DraftFlowBar
-            connected={Boolean(DEFAULT_PROFILE.accountId)}
-            playerSide={playerSide}
-            laneFilter={laneFilter}
-            allyCount={draft.allies.length}
-            enemyCount={draft.enemies.length}
-            hasPick={Boolean(draft.self)}
-            patch={patch}
-            onlineLiveStatus={onlineLiveStatus}
-            providerStatus={providerStatus}
-          />}
           <HeroGrid beginnerMode={beginnerMode} allHeroes={heroes} roleHeroes={roleEligibleHeroes} heroes={filteredHeroes} scores={scoreBundle.scores} stateForHero={stateForHero} onAction={actOnHero} query={query} setQuery={setQuery} attr={attr} setAttr={setAttr} loadingLive={matrixLoading || rosterLoading} laneFilter={laneFilter} setLaneFilter={setLaneFilter} playerSide={playerSide} />
           <RecommendationPanel beginnerMode={beginnerMode} recommendations={recommendations} onPick={actOnHero} draftComplete={draftComplete} allyCount={draft.allies.length} enemyCount={draft.enemies.length} laneLabel={laneLabels[laneFilter]} laneFilter={laneFilter} setLaneFilter={setLaneFilter} matrixLoading={matrixLoading} advisorMode={advisorMode} setAdvisorMode={setAdvisorMode} playerSide={playerSide} patch={patch} providerStatus={providerStatus} />
-        </main>
 
-        {!beginnerMode && <DraftInsights draft={draft} matrixLoading={matrixLoading} durationData={durationData} durationLoading={durationLoading} />}
+          {!beginnerMode && <section className="advanced-sections">
+            <details>
+              <summary><span>PLAYER PROFILE</span><small>history, comfort pool and public stats</small><b>⌄</b></summary>
+              <div className="advanced-section-body">
+                <PlayerProfile profile={DEFAULT_PROFILE} player={player} loading={profileLoading} personalSummary={personalSummary} winLoss={winLoss} recentSummary={recent} onOpenProfile={() => setProfileOpen(true)} />
+              </div>
+            </details>
+            <details>
+              <summary><span>DRAFT ANALYTICS</span><small>team shape and timing profile</small><b>⌄</b></summary>
+              <div className="advanced-section-body">
+                <DraftInsights draft={draft} matrixLoading={matrixLoading} durationData={durationData} durationLoading={durationLoading} />
+              </div>
+            </details>
+          </section>}
+        </main>
       </div>
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} profile={DEFAULT_PROFILE} player={player} winLoss={winLoss} recentMatches={recentMatches} allMatches={allMatches} historyLoading={historyLoading} historyError={historyError} playerHeroRows={playerHeroRows} heroes={heroes} recentSummary={recent} />
       <LegalModal open={legalOpen} onClose={() => setLegalOpen(false)} />
