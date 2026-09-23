@@ -62,24 +62,13 @@ function PrimaryPick({ beginnerMode = true, entry, onPick, mode, draftComplete, 
         <b>{score.draftFit.toFixed(1)}</b>
       </div>
       <p>{reasonFor(entry, mode)}{!beginnerMode && (personal?.games ? ` · you: ${personal.games} games` : ' · low personal experience')}</p>
-      {beginnerMode ? <div className="simple-pick-summary">
+      <div className={`simple-pick-summary ${beginnerMode ? '' : 'advanced-summary'}`}>
         <span><small>COUNTER</small><b className={score.enemyScore >= 0 ? 'positive' : 'negative'}>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b></span>
+        {!beginnerMode && <span><small>SYNERGY</small><b className={score.synergyScore >= 0 ? 'positive' : 'negative'}>{score.synergyScore > 0 ? '+' : ''}{score.synergyScore.toFixed(1)}</b></span>}
+        {!beginnerMode && <span><small>META</small><b>{score.metaScore.toFixed(1)}</b></span>}
         <span><small>CONFIDENCE</small><b>{evidence.label}</b></span>
         <span><small>COVERAGE</small><b>{evidence.verified.length}/{Math.max(enemyCount, 0)}</b></span>
-      </div> : <>
-        <div className="advisor-score-row">
-          <ScorePill label="VS" value={score.enemyScore} signed />
-          <ScorePill label="SYN" value={score.synergyScore} signed />
-          <ScorePill label="META" value={score.metaScore} />
-          <ScorePill label="YOU" value={score.personalFit / 10} />
-        </div>
-        <div className="pick-evidence-row">
-          <span><small>COUNTER DATA</small><b>{sourceText}</b></span>
-          <span><small>ALLY FIT</small><b>{score.synergySource === 'empirical' ? `${(score.synergyProviders || []).join(' + ') || 'STRATZ'} · ${Number(score.synergyGames || 0).toLocaleString()} samples` : 'ROLE MODEL FALLBACK'}</b></span>
-          <span><small>COVERAGE</small><b>{evidence.verified.length}/{Math.max(enemyCount, 0)} enemies</b></span>
-          <span><small>PATCH</small><b>{patch?.id || '—'}</b></span>
-        </div>
-      </>}
+      </div>
       <button onClick={() => onPick(hero, 'self')}>{beginnerMode ? 'PICK HERO' : `LOCK PICK${draftComplete ? ' · GAME PLAN READY' : ''}`} <span>→</span></button>
     </div>
   </article>;
@@ -180,11 +169,13 @@ export default function RecommendationPanel({
         <PrimaryPick beginnerMode={beginnerMode} entry={top} onPick={onPick} mode={advisorMode} draftComplete={draftComplete} enemyCount={enemyCount} patch={patch} providerStatus={providerStatus} />
         <div className="compact-pick-list">{recommendations.slice(1,beginnerMode ? 5 : 7).map((entry,i)=><CompactPick beginnerMode={beginnerMode} key={entry.hero.id} entry={entry} rank={i+2} onPick={onPick} enemyCount={enemyCount} />)}</div>
       </div>
-      {!beginnerMode && <details className="recommend-evidence-details"><summary>WHY THIS PICK <span>evidence & matchup detail</span></summary><AdvisorSignals entry={top} enemyCount={enemyCount} patch={patch} /></details>}
+      {!beginnerMode && <details className="recommend-evidence-details"><summary>WHY THIS PICK <span>evidence & matchup detail</span></summary>
+        <AdvisorSignals entry={top} enemyCount={enemyCount} patch={patch} />
+        <div className="recommend-foot v08-recommend-foot">
+          <span><b>BEST PICK</b> counter-first: 82% aggregate counters + 8% worst-matchup risk · 7% ally fit · 3% meta</span>
+          <span><b>CONFIDENCE</b> reflects matchup coverage/sample size; missing enemies lower the score instead of counting as neutral</span>
+        </div>
+      </details>}
     </> : <div className="empty-state"><strong>No eligible heroes for this position.</strong><span>Try Flex or another role.</span></div>}
-    {!beginnerMode && <div className="recommend-foot v08-recommend-foot">
-      <span><b>BEST PICK</b> counter-first: 82% aggregate counters + 8% worst-matchup risk · 7% ally fit · 3% meta</span>
-      <span><b>CONFIDENCE</b> reflects matchup coverage/sample size; missing enemies lower the score instead of counting as neutral</span>
-    </div>}
   </section>;
 }
