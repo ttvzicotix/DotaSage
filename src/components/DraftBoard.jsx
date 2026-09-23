@@ -31,46 +31,27 @@ export default function DraftBoard({ beginnerMode = true, draft, onRemove, onCle
       <div className="panel-head compact-head">
         <div><div className="eyebrow">LIVE DRAFT</div><h2>Lineups</h2></div>
         <div className="draft-head-actions">
-          {!beginnerMode && <>
-            <button className={`online-live-toggle ${onlineLiveEnabled ? onlineLiveStatus.found ? 'active' : 'enabled' : ''}`} onClick={onToggleOnlineLive} title="Zero-download scan for your account in provider-listed live/watchable matches">
-              <i /> {onlineLiveEnabled ? onlineLiveStatus.found ? 'ONLINE LIVE' : onlineLiveStatus.searching ? 'SCANNING…' : 'ONLINE SCAN' : 'ONLINE SCAN'}
-            </button>
-            <details className="draft-sync-advanced">
-              <summary title="Optional desktop sync and advanced draft controls">SYNC ▾</summary>
-              <div>
-                <span><b>DESKTOP SYNC</b><small>Optional. Browser draft + timer work without it.</small></span>
-                <button className={`live-draft-toggle local-only ${liveDraftEnabled ? liveDraftStatus.active ? 'active' : 'enabled' : ''}`} onClick={onToggleLiveDraft} title="Optional desktop Live Sync">
-                  <i /> {liveDraftEnabled ? liveDraftStatus.active ? 'LOCAL LIVE' : liveDraftStatus.bridge ? 'LOCAL READY' : 'LOCAL WAIT' : 'CONNECT LOCAL'}
-                </button>
-              </div>
-            </details>
-            <button className={`ghost-button draft-link-button ${copyStatus ? 'status' : ''}`} onClick={onCopyLink} title="Copy a shareable link for this draft">{copyStatus || 'LINK'}</button>
-            <button className="ghost-button" onClick={onSwapTeams} title="Swap your team and enemy team">⇄</button>
-          </>}
+          {!beginnerMode && <details className="draft-more-menu">
+            <summary>MORE <b>⌄</b></summary>
+            <div className="draft-more-popover">
+              <button className={onlineLiveEnabled && onlineLiveStatus.found ? 'active' : ''} onClick={onToggleOnlineLive}>
+                <span>ONLINE SCAN</span><small>{onlineLiveStatus.found ? 'Live match found' : onlineLiveStatus.searching ? 'Scanning…' : 'Browser-only live lookup'}</small>
+              </button>
+              <button className={liveDraftEnabled && liveDraftStatus.active ? 'active' : ''} onClick={onToggleLiveDraft}>
+                <span>LOCAL SYNC</span><small>{liveDraftStatus.active ? 'Draft connected' : liveDraftStatus.bridge ? 'Bridge ready' : 'Optional desktop connection'}</small>
+              </button>
+              <button onClick={onCopyLink}><span>{copyStatus || 'COPY DRAFT LINK'}</span><small>Share this exact draft</small></button>
+              <button onClick={onSwapTeams}><span>SWAP SIDES</span><small>Flip Radiant and Dire ownership</small></button>
+            </div>
+          </details>}
           <button className="ghost-button" onClick={onClear}>Reset</button>
         </div>
       </div>
-      {!beginnerMode && onlineLiveEnabled && <div className={`online-live-status ${onlineLiveStatus.found ? 'active' : onlineLiveStatus.error ? 'error' : 'searching'}`}>
-        <i />
-        <span>{onlineLiveStatus.found
-          ? `${onlineLiveStatus.provider || 'Online provider'} found match ${onlineLiveStatus.matchId || ''} · lineups/time update automatically when exposed`
-          : onlineLiveStatus.error
-            ? 'Online live provider is unavailable right now · manual draft still works'
-            : `Zero-download live scan · ${onlineLiveStatus.scannedGames || 0} watchable games checked · manual entry remains available`}</span>
-      </div>}
       <div className="side-selector" aria-label="Choose your map side">
         <span>YOUR SIDE</span>
         <button className={playerSide === 'radiant' ? 'radiant active' : 'radiant'} onClick={() => onSideChange('radiant')}><i /> RADIANT</button>
         <button className={playerSide === 'dire' ? 'dire active' : 'dire'} onClick={() => onSideChange('dire')}><i /> DIRE</button>
       </div>
-      {!beginnerMode && liveDraftEnabled && <div className={`local-draft-status ${liveDraftStatus.active ? 'active' : liveDraftStatus.bridge ? 'ready' : 'waiting'}`}>
-        <i />
-        <span>{liveDraftStatus.active
-          ? `Local draft detected${liveDraftStatus.gameState ? ` · ${liveDraftStatus.gameState}` : ''} · picks/bans sync automatically`
-          : liveDraftStatus.bridge
-            ? 'Optional local bridge connected · waiting for Dota draft data'
-            : 'Optional desktop sync is off-line · browser-only draft/timer still work'}</span>
-      </div>}
       <div className="team-columns map-side-columns">
         {playerSide === 'radiant' ? <>
           <TeamBlock label="RADIANT · YOUR TEAM" type="ally" side="Radiant" heroes={draft.allies} count={5} onRemove={onRemove} />
