@@ -24,31 +24,33 @@ function TeamBlock({ label, type, side, heroes, count, onRemove }) {
   );
 }
 
-export default function DraftBoard({ draft, onRemove, onClear, onOpenGamePlan, onCopyLink, copyStatus = '', playerSide = 'radiant', onSideChange, onSwapTeams, onlineLiveEnabled = false, onlineLiveStatus = {}, onToggleOnlineLive, liveDraftEnabled = false, liveDraftStatus = {}, onToggleLiveDraft }) {
+export default function DraftBoard({ beginnerMode = true, draft, onRemove, onClear, onOpenGamePlan, onCopyLink, copyStatus = '', playerSide = 'radiant', onSideChange, onSwapTeams, onlineLiveEnabled = false, onlineLiveStatus = {}, onToggleOnlineLive, liveDraftEnabled = false, liveDraftStatus = {}, onToggleLiveDraft }) {
   const complete = draft.allies.length === 5 && draft.enemies.length === 5;
   return (
     <section className="draft-board glass-panel v06-draft-board">
       <div className="panel-head compact-head">
         <div><div className="eyebrow">LIVE DRAFT</div><h2>Lineups</h2></div>
         <div className="draft-head-actions">
-          <button className={`online-live-toggle ${onlineLiveEnabled ? onlineLiveStatus.found ? 'active' : 'enabled' : ''}`} onClick={onToggleOnlineLive} title="Zero-download scan for your account in provider-listed live/watchable matches">
-            <i /> {onlineLiveEnabled ? onlineLiveStatus.found ? 'ONLINE LIVE' : onlineLiveStatus.searching ? 'SCANNING…' : 'ONLINE SCAN' : 'ONLINE SCAN'}
-          </button>
-          <details className="draft-sync-advanced">
-            <summary title="Optional desktop sync and advanced draft controls">SYNC ▾</summary>
-            <div>
-              <span><b>DESKTOP SYNC</b><small>Optional. Browser draft + timer work without it.</small></span>
-              <button className={`live-draft-toggle local-only ${liveDraftEnabled ? liveDraftStatus.active ? 'active' : 'enabled' : ''}`} onClick={onToggleLiveDraft} title="Optional desktop Live Sync">
-                <i /> {liveDraftEnabled ? liveDraftStatus.active ? 'LOCAL LIVE' : liveDraftStatus.bridge ? 'LOCAL READY' : 'LOCAL WAIT' : 'CONNECT LOCAL'}
-              </button>
-            </div>
-          </details>
-          <button className={`ghost-button draft-link-button ${copyStatus ? 'status' : ''}`} onClick={onCopyLink} title="Copy a shareable link for this draft">{copyStatus || 'LINK'}</button>
-          <button className="ghost-button" onClick={onSwapTeams} title="Swap your team and enemy team">⇄</button>
+          {!beginnerMode && <>
+            <button className={`online-live-toggle ${onlineLiveEnabled ? onlineLiveStatus.found ? 'active' : 'enabled' : ''}`} onClick={onToggleOnlineLive} title="Zero-download scan for your account in provider-listed live/watchable matches">
+              <i /> {onlineLiveEnabled ? onlineLiveStatus.found ? 'ONLINE LIVE' : onlineLiveStatus.searching ? 'SCANNING…' : 'ONLINE SCAN' : 'ONLINE SCAN'}
+            </button>
+            <details className="draft-sync-advanced">
+              <summary title="Optional desktop sync and advanced draft controls">SYNC ▾</summary>
+              <div>
+                <span><b>DESKTOP SYNC</b><small>Optional. Browser draft + timer work without it.</small></span>
+                <button className={`live-draft-toggle local-only ${liveDraftEnabled ? liveDraftStatus.active ? 'active' : 'enabled' : ''}`} onClick={onToggleLiveDraft} title="Optional desktop Live Sync">
+                  <i /> {liveDraftEnabled ? liveDraftStatus.active ? 'LOCAL LIVE' : liveDraftStatus.bridge ? 'LOCAL READY' : 'LOCAL WAIT' : 'CONNECT LOCAL'}
+                </button>
+              </div>
+            </details>
+            <button className={`ghost-button draft-link-button ${copyStatus ? 'status' : ''}`} onClick={onCopyLink} title="Copy a shareable link for this draft">{copyStatus || 'LINK'}</button>
+            <button className="ghost-button" onClick={onSwapTeams} title="Swap your team and enemy team">⇄</button>
+          </>}
           <button className="ghost-button" onClick={onClear}>Reset</button>
         </div>
       </div>
-      {onlineLiveEnabled && <div className={`online-live-status ${onlineLiveStatus.found ? 'active' : onlineLiveStatus.error ? 'error' : 'searching'}`}>
+      {!beginnerMode && onlineLiveEnabled && <div className={`online-live-status ${onlineLiveStatus.found ? 'active' : onlineLiveStatus.error ? 'error' : 'searching'}`}>
         <i />
         <span>{onlineLiveStatus.found
           ? `${onlineLiveStatus.provider || 'Online provider'} found match ${onlineLiveStatus.matchId || ''} · lineups/time update automatically when exposed`
@@ -61,7 +63,7 @@ export default function DraftBoard({ draft, onRemove, onClear, onOpenGamePlan, o
         <button className={playerSide === 'radiant' ? 'radiant active' : 'radiant'} onClick={() => onSideChange('radiant')}><i /> RADIANT</button>
         <button className={playerSide === 'dire' ? 'dire active' : 'dire'} onClick={() => onSideChange('dire')}><i /> DIRE</button>
       </div>
-      {liveDraftEnabled && <div className={`local-draft-status ${liveDraftStatus.active ? 'active' : liveDraftStatus.bridge ? 'ready' : 'waiting'}`}>
+      {!beginnerMode && liveDraftEnabled && <div className={`local-draft-status ${liveDraftStatus.active ? 'active' : liveDraftStatus.bridge ? 'ready' : 'waiting'}`}>
         <i />
         <span>{liveDraftStatus.active
           ? `Local draft detected${liveDraftStatus.gameState ? ` · ${liveDraftStatus.gameState}` : ''} · picks/bans sync automatically`
@@ -78,19 +80,19 @@ export default function DraftBoard({ draft, onRemove, onClear, onOpenGamePlan, o
           <TeamBlock label="DIRE · YOUR TEAM" type="ally" side="Dire" heroes={draft.allies} count={5} onRemove={onRemove} />
         </>}
       </div>
-      <div className="ban-block compact-bans">
+      {(!beginnerMode || draft.bans.length > 0) && <div className="ban-block compact-bans">
         <div className="team-block-head"><span>Bans</span><small>{draft.bans.length} · free</small></div>
         <div className="ban-list">
           {draft.bans.length ? draft.bans.slice(-8).map(hero => <button key={hero.id} onClick={() => onRemove(hero.id)}>{hero.localized_name}<b>×</b></button>) : <span className="empty-inline">No bans</span>}
         </div>
-      </div>
+      </div>}
       <div className={`locked-pick ${draft.self ? 'ready' : ''}`}>
         <span>YOUR HERO</span>
         {draft.self ? <>
           <div className="lock-hero"><img src={draft.self.portrait} alt="" /><strong>{draft.self.localized_name}</strong></div>
           <button className="primary-button" onClick={onOpenGamePlan}>{complete ? 'GAME PLAN' : 'PREVIEW GAME PLAN'} <b>→</b></button>
-          {!complete && <small className="draft-readiness">Pick locked. Complete both lineups to enter Game Plan automatically.</small>}
-        </> : <p>Lock your hero when ready. If both lineups fill first, DotaSage treats your fifth ally as your pick.</p>}
+          {!beginnerMode && !complete && <small className="draft-readiness">Pick locked. Complete both lineups to enter Game Plan automatically.</small>}
+        </> : beginnerMode ? <p>Choose your hero with ★ PICK.</p> : <p>Lock your hero when ready. If both lineups fill first, DotaSage treats your fifth ally as your pick.</p>}
       </div>
     </section>
   );
