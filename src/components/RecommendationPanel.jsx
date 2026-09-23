@@ -15,10 +15,10 @@ function reasonFor(entry, mode) {
   if (mode === 'meta') return 'Highest current public-stat meta signal in this role';
   if (mode === 'personal') return personal?.games ? `${personal.games} games in your public history` : 'Low personal sample, but still draft-viable';
   if (mode === 'learn') return 'Strong draft fit outside your usual comfort pool';
-  if (score.enemyScore >= 5) return 'Excellent into the entered enemy draft';
-  if (score.synergyScore >= 4) return score.synergySource === 'empirical' ? 'Strong empirical same-team synergy with the allies entered' : 'Strong modeled synergy with the allies already entered';
-  if (score.metaScore >= 7) return 'Strong current meta baseline';
-  return 'Best combined draft fit available';
+  if (score.enemyScore >= 5) return 'Excellent verified counter fit into the entered enemy draft';
+  if (score.enemyScore >= 2) return 'Strong counter-first fit into the entered enemy draft';
+  if (score.enemyScore >= 0) return 'Best available role-eligible counter fit';
+  return 'Best available role-eligible option, but the enemy draft is still uncomfortable';
 }
 
 function evidenceFor(entry, enemyCount = 0) {
