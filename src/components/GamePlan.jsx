@@ -481,9 +481,9 @@ function MatchContext({ minute, state, onMinute, onState, liveClock = false }) {
     onMinute(0);
   };
 
-  const [phase, window] = phaseForMinute(minute);
+  const [phase, phaseWindow] = phaseForMinute(minute);
   return <section className="gpv2-match-context gpv2-card">
-    <div><span>MATCH CONTEXT</span><strong>{phase}</strong><small>{window} min</small></div>
+    <div><span>MATCH CONTEXT</span><strong>{phase}</strong><small>{phaseWindow} min</small></div>
     <div className="gpv2-minute"><button onClick={() => setManualMinute(minute - 1)}>−</button><b>{Math.floor(minute)}:{String(Math.floor((minute % 1) * 60)).padStart(2, '0')}</b><button onClick={() => setManualMinute(minute + 1)}>+</button></div>
     <div className="gpv2-manual-timer">
       {liveClock ? <span className="live">LIVE CLOCK ACTIVE</span> : timerRunning
@@ -584,12 +584,18 @@ export default function GamePlan({
   const hero = draft.self;
   const [laneOverrides, setLaneOverrides] = useState(() => { try { return JSON.parse(sessionStorage.getItem('dotasage:lane-overrides') || '{}'); } catch { return {}; } });
   const [observedCounts, setObservedCounts] = useState(() => { try { return JSON.parse(sessionStorage.getItem('dotasage:observed-enemy-items') || '{}'); } catch { return {}; } });
-  const [minute, setMinuteState] = useState(() => { try { return Number(sessionStorage.getItem('dotasage:match-minute') || 0); } catch { return 0; } });
+  const [minute, setMinuteState] = useState(() => {
+    try {
+      const saved = Number(sessionStorage.getItem('dotasage:match-minute') || 0);
+      return Number.isFinite(saved) ? clamp(saved, 0, 120) : 0;
+    } catch { return 0; }
+  });
   const [matchState, setMatchStateState] = useState(() => { try { return sessionStorage.getItem('dotasage:match-state') || 'even'; } catch { return 'even'; } });
   const [liveClockConnected, setLiveClockConnected] = useState(false);
 
   const setMinute = value => {
-    const next = clamp(Number(value || 0), 0, 120);
+    const numeric = Number(value);
+    const next = Number.isFinite(numeric) ? clamp(numeric, 0, 120) : 0;
     setMinuteState(next);
     try { sessionStorage.setItem('dotasage:match-minute', String(next)); } catch {}
   };
