@@ -5,7 +5,7 @@ function ZMark() {
   return <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M8 10h48L36.5 31H50L56 54H8l19.5-21H14z" /></svg>;
 }
 
-export default function Topbar({ patch, player, profile, providerStatus, onReset, onOpenProfile, onOpenLegal, onOpenAbout }) {
+export default function Topbar({ patch, player, profile, providerStatus, beginnerMode = true, onToggleMode, onReset, onOpenProfile, onOpenLegal, onOpenAbout }) {
   const avatar = player?.profile?.avatar || player?.profile?.avatarmedium;
   const name = player?.profile?.personaname || profile.displayName;
   return <>
@@ -17,9 +17,10 @@ export default function Topbar({ patch, player, profile, providerStatus, onReset
 
       <div className="topbar-command" aria-label="DotaSage status">
         <span className={`patch-badge ${patch?.live ? 'fresh' : ''}`} title={patch?.source || 'Bundled patch fallback'}>PATCH {patch?.id || '—'}</span>
-        <span className="verified-badge" title={providerStatus?.stratzConfigured ? 'STRATZ + OpenDota + Steam fallbacks ready' : 'OpenDota + Steam fallbacks active; STRATZ activates when the server token is added'}><i /> {providerStatus?.stratzConfigured ? 'MULTI-SOURCE DATA' : 'PUBLIC DATA ONLINE'}</span>
-        <span className="topbar-divider" />
-        <span className="topbar-mode">DRAFT <b>→</b> PICK <b>→</b> PLAN</span>
+        {!beginnerMode && <span className="verified-badge" title={providerStatus?.stratzConfigured ? 'STRATZ + OpenDota + Steam fallbacks ready' : 'OpenDota + Steam fallbacks active; STRATZ activates when the server token is added'}><i /> {providerStatus?.stratzConfigured ? 'MULTI-SOURCE DATA' : 'PUBLIC DATA ONLINE'}</span>}
+        {!beginnerMode && <span className="topbar-divider" />}
+        {!beginnerMode && <span className="topbar-mode">DRAFT <b>→</b> PICK <b>→</b> PLAN</span>}
+        <button className="experience-toggle" onClick={onToggleMode}>{beginnerMode ? 'ADVANCED' : 'SIMPLE'}</button>
       </div>
 
       <div className="topbar-actions">
