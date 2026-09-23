@@ -20,13 +20,17 @@ export default function Topbar({ patch, player, profile, providerStatus, beginne
         {!beginnerMode && <span className="verified-badge" title={providerStatus?.stratzConfigured ? 'STRATZ + OpenDota + Steam fallbacks ready' : 'OpenDota + Steam fallbacks active; STRATZ activates when the server token is added'}><i /> {providerStatus?.stratzConfigured ? 'MULTI-SOURCE DATA' : 'PUBLIC DATA ONLINE'}</span>}
         {!beginnerMode && <span className="topbar-divider" />}
         {!beginnerMode && <span className="topbar-mode">DRAFT <b>→</b> PICK <b>→</b> PLAN</span>}
-        <div className="experience-switch" aria-label="DotaSage experience mode">
-          <button className={beginnerMode ? 'active' : ''} onClick={() => onSetMode?.('simple')}>SIMPLE</button>
-          <button className={!beginnerMode ? 'active' : ''} onClick={() => onSetMode?.('advanced')}>ADVANCED</button>
-        </div>
+
       </div>
 
       <div className="topbar-actions">
+        <div className="experience-control">
+          <span>MODE</span>
+          <div className="experience-switch" aria-label="DotaSage experience mode">
+            <button className={beginnerMode ? 'active' : ''} onClick={() => onSetMode?.('simple')}>SIMPLE</button>
+            <button className={!beginnerMode ? 'active' : ''} onClick={() => onSetMode?.('advanced')}>ADVANCED</button>
+          </div>
+        </div>
         <button className="zicotix-nav-button" onClick={onOpenAbout} title="About DotaSage and Zicotix"><ZMark /><span>ZICOTIX</span></button>
         <button className="legal-icon-button" onClick={onOpenLegal} title="Valve attribution, Terms and Privacy" aria-label="Legal and privacy">i</button>
         <button className="account-button" onClick={onOpenProfile}>
