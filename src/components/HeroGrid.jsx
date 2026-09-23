@@ -9,16 +9,22 @@ const positionFilters = [
   ['all', 'FLEX'], ['safe', 'POS 1'], ['mid', 'POS 2'], ['off', 'POS 3'],
   ['support4', 'POS 4'], ['support5', 'POS 5'], ['roam', 'ROAM'],
 ];
-const quickTargets = [
-  ['ally', 'YOUR TEAM', '1'],
-  ['enemy', 'ENEMY', '2'],
-  ['self', 'MY PICK', '3'],
-  ['ban', 'BAN', '4'],
-];
+function quickTargetsForSide(playerSide) {
+  const yourSide = playerSide === 'dire' ? 'DIRE' : 'RADIANT';
+  const enemySide = playerSide === 'dire' ? 'RADIANT' : 'DIRE';
+  return [
+    ['ally', yourSide, '1'],
+    ['enemy', enemySide, '2'],
+    ['self', 'MY PICK', '3'],
+    ['ban', 'BAN', '4'],
+  ];
+}
 
-function QuickHero({ hero, state, onAction, quickTarget }) {
+function QuickHero({ hero, state, onAction, quickTarget, targets, playerSide }) {
   const used = state && state !== 'available';
-  const targetLabel = quickTargets.find(([key]) => key === quickTarget)?.[1] || 'ENEMY';
+  const targetLabel = targets.find(([key]) => key === quickTarget)?.[1] || (playerSide === 'dire' ? 'RADIANT' : 'DIRE');
+  const radiantAction = playerSide === 'radiant' ? 'ally' : 'enemy';
+  const direAction = playerSide === 'dire' ? 'ally' : 'enemy';
   return <article className={`quick-hero-tile ${used ? `used ${state}` : ''}`}>
     <button
       className="quick-hero-main"
@@ -34,9 +40,9 @@ function QuickHero({ hero, state, onAction, quickTarget }) {
       {!used && <b className="quick-target-hint">{targetLabel}</b>}
     </button>
     {!used && <div className="quick-hero-actions semantic-quick-actions">
-      <button className="ally" title="Add to your team" onClick={() => onAction(hero, 'ally')}>ALLY</button>
-      <button className="enemy" title="Add to enemy team" onClick={() => onAction(hero, 'enemy')}>ENEMY</button>
-      <button className="pick" title="Lock as your hero" onClick={() => onAction(hero, 'self')}>★ PICK</button>
+      <button className="radiant" title="Add to Radiant" onClick={() => onAction(hero, radiantAction)}>RADIANT</button>
+      <button className="dire" title="Add to Dire" onClick={() => onAction(hero, direAction)}>DIRE</button>
+      <button className="pick" title={`Lock as your hero on ${playerSide.toUpperCase()}`} onClick={() => onAction(hero, 'self')}>★ PICK</button>
       <button className="ban" title="Ban hero" onClick={() => onAction(hero, 'ban')}>BAN</button>
     </div>}
   </article>;
@@ -51,6 +57,7 @@ export default function HeroGrid({ allHeroes, roleHeroes, heroes, scores, stateF
     catch { return 'enemy'; }
   });
   const deferredQuery = useDeferredValue(query);
+  const quickTargets = useMemo(() => quickTargetsForSide(playerSide), [playerSide]);
   const inputRef = useRef(null);
   const roleIds = useMemo(() => new Set(roleHeroes.map(hero => hero.id)), [roleHeroes]);
 
@@ -148,14 +155,14 @@ export default function HeroGrid({ allHeroes, roleHeroes, heroes, scores, stateF
     </div>
 
     <div className="quick-target-picker" aria-label="Quick add target">
-      <span><b>ADD SEARCH RESULTS AS</b><small>Use 1–4 anytime outside a text field</small></span>
+      <span><b>ADD SEARCH RESULTS TO</b><small>1 = {quickTargets[0][1]} · 2 = {quickTargets[1][1]} · 3 = your pick · 4 = ban</small></span>
       <div>{quickTargets.map(([key,label,shortcut]) => <button key={key} className={quickTarget === key ? `active ${key}` : key} onClick={() => setQuickTarget(key)}>
         <kbd>{shortcut}</kbd>{label}
       </button>)}</div>
       <em>{quickTarget === 'ally'
-        ? `Adds to your ${playerSide.toUpperCase()} lineup`
+        ? `Adds to ${quickTargets[0][1]} · your selected side`
         : quickTarget === 'enemy'
-          ? `Adds to the opposing ${playerSide === 'radiant' ? 'DIRE' : 'RADIANT'} lineup`
+          ? `Adds to ${quickTargets[1][1]} · opposing side`
           : quickTarget === 'self'
             ? 'Locks your hero and adds it to your team'
             : 'Adds to the ban list'}</em>
@@ -169,10 +176,10 @@ export default function HeroGrid({ allHeroes, roleHeroes, heroes, scores, stateF
     <div className="quick-hero-shelf">
       <div className="quick-shelf-label">
         <span>{query ? 'MATCHES' : 'QUICK HEROES'}</span>
-        <small>{query ? `Enter adds #1 as ${quickTargets.find(([key]) => key === quickTarget)?.[1] || 'target'}` : 'click a tile to use the active add target · hover for overrides'}</small>
+        <small>{query ? `Enter adds #1 to ${quickTargets.find(([key]) => key === quickTarget)?.[1] || 'target'}` : 'click a tile to use the active Radiant/Dire target · hover for overrides'}</small>
       </div>
       <div className="quick-hero-scroll">{quickHeroes.length
-        ? quickHeroes.map(hero => <QuickHero key={hero.id} hero={hero} state={stateForHero(hero.id)} onAction={runAction} quickTarget={quickTarget} />)
+        ? quickHeroes.map(hero => <QuickHero key={hero.id} hero={hero} state={stateForHero(hero.id)} onAction={runAction} quickTarget={quickTarget} targets={quickTargets} playerSide={playerSide} />)
         : <div className="quick-no-results">No hero or alias matches that search.</div>}</div>
     </div>
 
