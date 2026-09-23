@@ -1,5 +1,3 @@
-import ScorePill from './ScorePill';
-
 export const positionOptions = [
   ['all', 'FLEX'], ['safe', 'SAFE · 1'], ['mid', 'MID · 2'], ['off', 'OFF · 3'],
   ['support4', 'SUPPORT · 4'], ['support5', 'HARD SUP · 5'], ['jungle', 'JUNGLE'], ['roam', 'ROAM'],
@@ -113,16 +111,13 @@ function AdvisorSignals({ entry, enemyCount, patch }) {
   </div>;
 }
 
-function CompactPick({ beginnerMode = true, entry, rank, onPick, enemyCount }) {
-  const { hero, score, personal } = entry;
-  const evidence = evidenceFor(entry, enemyCount);
-  return <button className="compact-pick" onClick={() => onPick(hero, 'self')}>
-    <span className="compact-rank">{rank}</span><img src={hero.portrait} alt="" />
-    <span className="compact-name"><strong>{hero.localized_name}</strong>{!beginnerMode && <small>{personal?.games ? `${personal.games} games` : 'new / low sample'}</small>}</span>
-    {!beginnerMode && <span className="compact-metric"><small>DRAFT</small><b>{score.draftFit.toFixed(1)}</b></span>}
+function CompactPick({ entry, rank, onPick }) {
+  const { hero, score } = entry;
+  return <button className="compact-pick consolidated-compact-pick" onClick={() => onPick(hero, 'self')}>
+    <span className="compact-rank">{rank}</span>
+    <img src={hero.portrait} alt="" />
+    <span className="compact-name"><strong>{hero.localized_name}</strong></span>
     <span className="compact-metric"><small>VS</small><b className={score.enemyScore >= 0 ? 'positive' : 'negative'}>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b></span>
-    {!beginnerMode && <span className="compact-metric syn-metric"><small>SYN</small><b className={score.synergyScore >= 0 ? 'positive' : 'negative'}>{score.synergyScore > 0 ? '+' : ''}{score.synergyScore.toFixed(1)}</b></span>}
-    {!beginnerMode && <span className={`compact-confidence ${evidence.label.toLowerCase()}`} title={`${evidence.verified.length}/${Math.max(enemyCount, 1)} enemy matchups covered`}>{evidence.label}</span>}
     <span className="compact-arrow">→</span>
   </button>;
 }
@@ -167,7 +162,7 @@ export default function RecommendationPanel({
     {top ? <>
       <div className="advisor-results">
         <PrimaryPick beginnerMode={beginnerMode} entry={top} onPick={onPick} mode={advisorMode} draftComplete={draftComplete} enemyCount={enemyCount} patch={patch} providerStatus={providerStatus} />
-        <div className="compact-pick-list">{recommendations.slice(1,beginnerMode ? 5 : 7).map((entry,i)=><CompactPick beginnerMode={beginnerMode} key={entry.hero.id} entry={entry} rank={i+2} onPick={onPick} enemyCount={enemyCount} />)}</div>
+        <div className="compact-pick-list">{recommendations.slice(1,beginnerMode ? 5 : 7).map((entry,i)=><CompactPick key={entry.hero.id} entry={entry} rank={i+2} onPick={onPick} />)}</div>
       </div>
       {!beginnerMode && <details className="recommend-evidence-details"><summary>WHY THIS PICK <span>evidence & matchup detail</span></summary>
         <AdvisorSignals entry={top} enemyCount={enemyCount} patch={patch} />
