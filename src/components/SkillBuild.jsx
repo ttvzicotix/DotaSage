@@ -6,7 +6,7 @@ export default function SkillBuild({ hero }) {
   useEffect(() => {
     let cancelled = false;
     setState({ loading: true, samples: 0, levels: [], provider: null });
-    fetch(`/api/skillbuild?heroId=${encodeURIComponent(hero?.id || '')}`, {
+    fetch(`/api/skillbuild?heroId=${encodeURIComponent(hero?.id || '')}&v=2`, {
       headers: { Accept: 'application/json' },
     })
       .then(response => response.ok ? response.json() : Promise.reject(new Error(String(response.status))))
