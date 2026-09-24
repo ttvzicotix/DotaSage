@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ScorePill from './ScorePill';
 import MatchupAtlas from './MatchupAtlas';
+import SkillBuild from './SkillBuild';
+import SimpleItemPlan from './SimpleItemPlan';
 import { fetchRecentMatches, fetchMatch, itemImageUrl } from '../services/openDota';
 import { DEFAULT_PROFILE } from '../data/defaultProfile';
 import { buildLaneMap, positionName } from '../engine/lanePrediction';
@@ -675,7 +677,70 @@ export default function GamePlan({
   const dire = playerSide === 'dire' ? draft.allies : draft.enemies;
   const ratingMap = side => side === playerSide ? lineupRatings?.allies : lineupRatings?.enemies;
 
-  return <main className={`gpv2 game-plan ${beginnerMode ? 'simple-gameplan' : 'advanced-gameplan'}`}>
+  if (beginnerMode) {
+    const simpleCalls = [
+      {
+        label: 'LANE',
+        title: laneOpponents.length ? laneOpponents.map(row => row.localized_name).join(' + ') : 'Lane not set',
+        text: laneTone === 'favorable' ? 'Pressure the matchup without trading away your farming pattern.' : laneTone === 'pressured' ? 'Protect HP and lane access; do not force the matchup just because it is on screen.' : 'Trade only when the wave and your next resource cycle support it.',
+      },
+      {
+        label: 'WATCH',
+        title: threat?.hero?.localized_name || 'Enemy initiation',
+        text: threat ? `Hardest verified matchup (${signed(threat.score)}). Know where this hero is before committing.` : 'No verified hard counter has loaded yet. Respect the enemy’s first reliable disable.',
+      },
+      {
+        label: 'NEXT',
+        title: Number(minute || 0) < 10 ? 'Farm → first timing' : Number(minute || 0) < 20 ? 'Tower → map control' : Number(minute || 0) < 35 ? 'Roshan / Tormentor / T2' : 'Roshan → buyback → high ground',
+        text: matchState === 'ahead' ? 'Use the lead to take territory, not to chase deeper.' : matchState === 'behind' ? 'Shove the safe wave and recover vision before forcing.' : 'Get information first, then take the clean objective.',
+      },
+    ];
+
+    return <main className="gpv2 game-plan simple-gameplan simple-gameplan-v025">
+      <div className="gpv2-toolbar simple-gp-toolbar">
+        <button onClick={onBack}>← DRAFT</button>
+        <span>GAME PLAN · PATCH {patch?.id || '—'}</span>
+      </div>
+
+      <section className="simple-hero-banner">
+        <div className="simple-hero-image"><img src={hero.portrait} alt="" /></div>
+        <div className="simple-hero-title">
+          <span>YOUR HERO · {playerSide.toUpperCase()}</span>
+          <h1>{hero.localized_name}</h1>
+          <p>{roleLabel}</p>
+        </div>
+        <div className="simple-hero-score">
+          <small>VS DRAFT</small>
+          <strong className={Number(selectedScore?.enemyScore || 0) >= 0 ? 'positive' : 'negative'}>{signed(selectedScore?.enemyScore)}</strong>
+          <span>{laneTone}</span>
+        </div>
+      </section>
+
+      <MatchContext minute={minute} state={matchState} onMinute={setMinute} onState={setMatchState} liveClock={onlineClockConnected || liveClockConnected} />
+
+      <section className="simple-call-grid">
+        {simpleCalls.map(call => <article key={call.label}>
+          <span>{call.label}</span>
+          <strong>{call.title}</strong>
+          <p>{call.text}</p>
+        </article>)}
+      </section>
+
+      <div className="simple-build-layout">
+        <SkillBuild hero={hero} />
+        <SimpleItemPlan
+          phases={phases}
+          conditionals={conditionals}
+          items={allItems}
+          observedCounts={observedCounts}
+          onObservedChange={changeObserved}
+          loading={itemLoading}
+        />
+      </div>
+    </main>;
+  }
+
+  return <main className="gpv2 game-plan advanced-gameplan">
     <div className="gpv2-toolbar"><button onClick={onBack}>← BACK TO DRAFT</button><span>GAME PLAN · PATCH {patch?.id || '—'}</span><button onClick={() => document.getElementById('post-match-review')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>POST-MATCH ↓</button></div>
 
     <section className="gpv2-hero-brief">
