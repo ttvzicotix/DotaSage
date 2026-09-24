@@ -150,9 +150,9 @@ export default function RecommendationPanel({
         <h2>{beginnerMode ? 'Recommended pick' : 'Draft recommendation'}</h2>
       </div>
       <div className="recommend-selects">
-        <label><span>ROLE</span><select value={laneFilter} onChange={event => setLaneFilter(event.target.value)}>
-          {positionOptions.filter(([key]) => key !== 'jungle' && key !== 'roam').map(([key,label]) => <option key={key} value={key}>{label}</option>)}
-        </select></label>
+        <div className="recommend-role-buttons" aria-label="Choose role">
+          {positionOptions.filter(([key]) => !['jungle','roam'].includes(key)).map(([key,label]) => <button key={key} className={laneFilter === key ? 'active' : ''} onClick={() => setLaneFilter(key)}>{label}</button>)}
+        </div>
         {!beginnerMode && <label><span>FOCUS</span><select value={advisorMode} onChange={event => setAdvisorMode(event.target.value)}>
           {advisorModes.map(([key,label]) => <option key={key} value={key}>{label}</option>)}
         </select></label>}
