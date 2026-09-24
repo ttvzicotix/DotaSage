@@ -62,43 +62,55 @@ export default async function handler(req, res) {
       matchIds.map(matchId => fetchJson(`${BASE}/matches/${matchId}`, 7500)),
     );
 
-    const sequences = [];
+    const samples = [];
     for (const result of details) {
       if (result.status !== 'fulfilled') continue;
       const match = result.value;
       const player = (match?.players || []).find(row => Number(row?.hero_id) === heroId);
       if (!player) continue;
-      let raw = Array.isArray(player.ability_upgrades_arr) ? player.ability_upgrades_arr : [];
-      if (!raw.length && Array.isArray(player.ability_upgrades)) {
-        raw = player.ability_upgrades.map(row => row?.ability ?? row?.ability_id).filter(Boolean);
+
+      const points = [];
+      if (Array.isArray(player.ability_upgrades) && player.ability_upgrades.length) {
+        for (const upgrade of player.ability_upgrades) {
+          const key = abilityKeyForId(abilityIds, upgrade?.ability ?? upgrade?.ability_id);
+          const level = Number(upgrade?.level);
+          if (!key || key === 'generic_hidden' || !Number.isInteger(level) || level <= 0) continue;
+          points.push({ level, key });
+        }
       }
-      const sequence = raw
-        .map(id => abilityKeyForId(abilityIds, id))
-        .filter(Boolean)
-        .slice(0, 18);
-      if (sequence.length >= 4) sequences.push(sequence);
+
+      // Older parsed records may only expose ordered IDs. Keep this as a fallback,
+      // but prefer explicit hero levels whenever OpenDota supplies them.
+      if (!points.length && Array.isArray(player.ability_upgrades_arr)) {
+        player.ability_upgrades_arr.slice(0, 18).forEach((id, index) => {
+          const key = abilityKeyForId(abilityIds, id);
+          if (key && key !== 'generic_hidden') points.push({ level: index + 1, key });
+        });
+      }
+
+      if (points.length >= 4) samples.push(points);
     }
 
     const levels = [];
-    const maxLevel = Math.min(15, Math.max(0, ...sequences.map(row => row.length)));
-    for (let index = 0; index < maxLevel; index += 1) {
+    for (let level = 1; level <= 15; level += 1) {
       const votes = new Map();
-      for (const sequence of sequences) {
-        const key = sequence[index];
-        if (!key || key === 'generic_hidden') continue;
-        votes.set(key, (votes.get(key) || 0) + 1);
+      for (const points of samples) {
+        for (const point of points.filter(row => row.level === level)) {
+          votes.set(point.key, (votes.get(point.key) || 0) + 1);
+        }
       }
       const winner = [...votes.entries()].sort((a, b) => b[1] - a[1])[0];
       if (!winner) continue;
       const [key, votesFor] = winner;
       const row = abilities?.[key] || {};
+      const isTalent = key.startsWith('special_bonus_');
       levels.push({
-        level: index + 1,
+        level,
         key,
-        name: row?.dname || prettyAbility(key),
-        image: abilityImage(key, row),
+        name: isTalent ? 'Talent' : (row?.dname || prettyAbility(key)),
+        image: isTalent ? null : abilityImage(key, row),
         votes: votesFor,
-        samples: sequences.length,
+        samples: samples.length,
       });
     }
 
@@ -106,7 +118,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       provider: 'OpenDota parsed matches',
       heroId,
-      samples: sequences.length,
+      samples: samples.length,
       levels,
     });
   } catch (error) {
