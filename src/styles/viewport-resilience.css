@@ -2237,3 +2237,226 @@ body {
     grid-template-columns:1fr!important;
   }
 }
+
+
+/* v0.26 clean + instant draft ------------------------------------------ */
+.beginner-layout .persistent-hero-gallery{
+  padding:8px 10px 10px!important;
+}
+.beginner-layout .persistent-hero-gallery .quick-shelf-label{
+  margin-bottom:6px!important;
+}
+.beginner-layout .persistent-hero-gallery .quick-shelf-label>small{
+  display:none!important;
+}
+.beginner-layout .persistent-hero-gallery .quick-shelf-label>span{
+  font-size:9px!important;
+  color:#8f7aa8!important;
+}
+
+/* Portrait stays clean. Name/actions live in a separate footer. */
+.clean-hero-card{
+  min-height:0!important;
+  overflow:hidden!important;
+  border-radius:13px!important;
+  background:rgba(255,255,255,.012)!important;
+}
+.clean-hero-card .quick-result-portrait{
+  height:74px;
+  overflow:hidden;
+  background:#080a0f;
+}
+.clean-hero-card .quick-result-portrait img{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center;
+}
+.clean-hero-card .quick-result-footer{
+  position:relative;
+  height:34px;
+  border-top:1px solid rgba(255,255,255,.045);
+  background:rgba(9,11,16,.96);
+}
+.clean-hero-card .quick-result-name,
+.clean-hero-card .quick-result-state{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  padding:0 8px;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  color:#cbd3df;
+  font:700 10px Barlow Condensed;
+  transition:opacity .12s ease;
+}
+.clean-hero-card .quick-result-state{
+  color:#9da8b7;
+  justify-content:center;
+  font-size:9px;
+  letter-spacing:.05em;
+}
+.clean-hero-card .quick-result-actions{
+  position:absolute!important;
+  inset:3px!important;
+  display:grid!important;
+  grid-template-columns:1fr 1fr 1.1fr!important;
+  gap:3px!important;
+  padding:0!important;
+  opacity:0!important;
+  transform:none!important;
+  pointer-events:none!important;
+}
+.clean-hero-card:hover .quick-result-name,
+.clean-hero-card:focus-within .quick-result-name{
+  opacity:0;
+}
+.clean-hero-card:hover .quick-result-actions,
+.clean-hero-card:focus-within .quick-result-actions{
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+.clean-hero-card .quick-result-actions button{
+  min-height:28px!important;
+  height:28px!important;
+  padding:0 4px!important;
+  border-radius:7px!important;
+  font:700 8px Barlow Condensed!important;
+  letter-spacing:0!important;
+}
+.clean-hero-card .quick-result-actions .radiant{color:#9ee6b8!important}
+.clean-hero-card .quick-result-actions .dire{color:#efa1a4!important}
+.clean-hero-card .quick-result-actions .pick{color:#ead08a!important}
+.clean-hero-card .quick-result-actions .ban{
+  display:none!important;
+}
+.advanced-layout .clean-hero-card .quick-result-actions{
+  grid-template-columns:1fr 1fr 1.1fr .8fr!important;
+}
+.advanced-layout .clean-hero-card .quick-result-actions .ban{
+  display:block!important;
+}
+
+/* Less repeated copy in the default flow. */
+.beginner-layout .quick-no-results{
+  padding:16px!important;
+  font-size:11px!important;
+}
+.beginner-layout .advisor-head{
+  min-height:44px!important;
+  margin-bottom:8px!important;
+}
+.beginner-layout .advisor-head h2{
+  font-size:25px!important;
+  margin:0!important;
+}
+.beginner-layout .simple-ranking-status{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  color:#8a94a3;
+  font-size:10px;
+}
+.beginner-layout .simple-ranking-status i{
+  width:6px;height:6px;border-radius:50%;
+  background:#a66cff;
+  box-shadow:0 0 8px rgba(166,108,255,.45);
+}
+.beginner-layout .minimal-summary{
+  grid-template-columns:1fr 1fr!important;
+  max-width:270px;
+}
+.beginner-layout .primary-pick-copy>p{
+  display:none!important;
+}
+.beginner-layout .pick-evidence-row,
+.beginner-layout .advisor-score-row{
+  display:none!important;
+}
+.beginner-layout .primary-pick-title>div>span{
+  display:none!important;
+}
+.beginner-layout .primary-pick-title strong{
+  font-size:30px!important;
+}
+.beginner-layout .primary-pick-title>b{
+  font-size:25px!important;
+  color:#bfa9d9!important;
+}
+.beginner-layout .simple-pick-summary{
+  margin:9px 0!important;
+}
+.beginner-layout .simple-pick-summary>span{
+  padding:6px 8px!important;
+}
+.beginner-layout .simple-pick-summary small{
+  font-size:8px!important;
+}
+.beginner-layout .simple-pick-summary b{
+  font-size:14px!important;
+}
+.beginner-layout .primary-pick-copy>button{
+  margin-top:4px!important;
+}
+
+/* Role controls stay obvious but compact. */
+.beginner-layout .recommend-role-buttons{
+  gap:4px!important;
+}
+.beginner-layout .recommend-role-buttons button{
+  min-height:32px!important;
+  padding:0 8px!important;
+  font-size:8.5px!important;
+}
+
+/* Draft board: side is already in the header, so empty slots only need a slot marker. */
+.beginner-layout .draft-slot.empty span{
+  font-size:13px!important;
+  color:#4d5666!important;
+}
+.beginner-layout .draft-slot.empty i{
+  font-size:8px!important;
+}
+.beginner-layout .locked-pick>p{
+  margin:3px 0 0!important;
+  font-size:10px!important;
+  color:#6d7888!important;
+}
+
+/* Tighter gallery density without cramming text onto the portraits. */
+.beginner-layout .persistent-hero-gallery .quick-hero-scroll{
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:7px!important;
+}
+@media(max-width:1350px){
+  .beginner-layout .persistent-hero-gallery .quick-hero-scroll{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:1000px){
+  .beginner-layout .persistent-hero-gallery .quick-hero-scroll{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:760px){
+  .clean-hero-card .quick-result-footer{
+    height:66px;
+  }
+  .clean-hero-card .quick-result-name{
+    position:static;
+    height:30px;
+  }
+  .clean-hero-card .quick-result-actions{
+    position:static!important;
+    opacity:1!important;
+    pointer-events:auto!important;
+    padding:0 6px 6px!important;
+    height:30px;
+  }
+  .beginner-layout .persistent-hero-gallery .quick-hero-scroll{
+    grid-template-columns:1fr 1fr!important;
+  }
+}
