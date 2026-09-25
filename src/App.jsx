@@ -24,6 +24,7 @@ import { fetchProviderStatus } from './services/providerStatus';
 import { decodeDraftState, draftPayload, encodeDraftState } from './utils/draftShare';
 import { fetchRoleMeta } from './services/roleMeta';
 import { matchesLane } from './engine/roleEligibility';
+import { forecastEnemyPicks, futureCounterScoreForCandidate } from './engine/draftForecast';
 
 const emptyDraft = () => ({ allies: [], enemies: [], bans: [], self: null });
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -88,6 +89,8 @@ export default function App() {
   const [matrixLoading, setMatrixLoading] = useState(false);
   const [draft, setDraft] = useState(emptyDraft);
   const [enemyMatrix, setEnemyMatrix] = useState(new Map());
+  const [forecastMatrices, setForecastMatrices] = useState(new Map());
+  const [forecastLoading, setForecastLoading] = useState(false);
   const [durationData, setDurationData] = useState(new Map());
   const [allySynergyMatrix, setAllySynergyMatrix] = useState(new Map());
   const [durationLoading, setDurationLoading] = useState(false);
@@ -580,6 +583,80 @@ export default function App() {
 
   const personalForHero = useMemo(() => buildPersonalScores(playerHeroRows, DEFAULT_PROFILE.manualPreferences), [playerHeroRows]);
 
+  const forecastUsedIds = useMemo(
+    () => new Set([...draft.allies, ...draft.enemies, ...draft.bans].map(hero => Number(hero.id))),
+    [draft.allies, draft.enemies, draft.bans],
+  );
+
+  const preliminaryEnemyForecast = useMemo(() => {
+    if (!draft.enemies.length || draft.enemies.length >= 5) return [];
+    return forecastEnemyPicks({
+      heroes,
+      enemyHeroes: draft.enemies,
+      allyHeroes: draft.allies,
+      usedIds: forecastUsedIds,
+      statById,
+      matchupByCandidate: new Map(),
+      limit: 7,
+    });
+  }, [heroes, draft.enemies, draft.allies, forecastUsedIds, statById]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer = null;
+    if (!preliminaryEnemyForecast.length || draft.enemies.length >= 5) {
+      setForecastLoading(false);
+      setForecastMatrices(new Map());
+      return undefined;
+    }
+
+    timer = window.setTimeout(() => {
+      const targets = preliminaryEnemyForecast.slice(0, 6);
+      const missing = targets.filter(row => !forecastMatrices.has(Number(row.hero.id)));
+      if (!missing.length) {
+        setForecastLoading(false);
+        return;
+      }
+
+      setForecastLoading(true);
+      let pending = missing.length;
+      missing.forEach(row => {
+        fetchHeroMatchups(row.hero.id)
+          .then(rows => {
+            if (cancelled) return;
+            setForecastMatrices(previous => {
+              const next = new Map(previous);
+              next.set(Number(row.hero.id), Array.isArray(rows) ? rows : []);
+              return next;
+            });
+          })
+          .catch(() => {})
+          .finally(() => {
+            pending -= 1;
+            if (!cancelled && pending <= 0) setForecastLoading(false);
+          });
+      });
+    }, 220);
+
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [preliminaryEnemyForecast, draft.enemies.length, forecastMatrices]);
+
+  const enemyForecast = useMemo(() => {
+    if (!draft.enemies.length || draft.enemies.length >= 5) return [];
+    return forecastEnemyPicks({
+      heroes,
+      enemyHeroes: draft.enemies,
+      allyHeroes: draft.allies,
+      usedIds: forecastUsedIds,
+      statById,
+      matchupByCandidate: forecastMatrices,
+      limit: 5,
+    });
+  }, [heroes, draft.enemies, draft.allies, forecastUsedIds, statById, forecastMatrices]);
+
   const scoreBundle = useMemo(() => {
     const scores = new Map(); const pairBreakdowns = new Map();
     for (const hero of heroes) {
@@ -627,7 +704,13 @@ export default function App() {
       const metaProvider = roleMetaRow?._provider || 'OpenDota';
       const metaGames = Number(roleMetaRow?.games || 0);
       const metaPosition = roleMetaRow?._position || null;
-      const draftFit = draftFitScore({
+      const futureCounter = futureCounterScoreForCandidate({
+        candidate: hero,
+        forecast: enemyForecast,
+        forecastMatrices,
+        statById,
+      });
+      const baseDraftFit = draftFitScore({
         enemyScore,
         counterEvidenceCount,
         counterCoverage,
@@ -635,11 +718,9 @@ export default function App() {
         synergyScore,
         teamFit,
         metaScore,
-        counterEvidenceCount,
-        counterCoverage,
-        worstCounterScore,
       });
-      const overall = overallRecommendation({
+      const draftFit = clamp(baseDraftFit + futureCounter.score * 0.05, 0, 10);
+      const baseOverall = overallRecommendation({
         enemyScore,
         synergyScore,
         teamFit,
@@ -649,6 +730,7 @@ export default function App() {
         counterCoverage,
         worstCounterScore,
       });
+      const overall = clamp(baseOverall + futureCounter.score * 0.04, 0, 10);
       scores.set(hero.id, {
         enemyScore,
         synergyScore,
@@ -665,12 +747,14 @@ export default function App() {
         metaPosition,
         draftFit,
         overall,
+        futureCounterScore: futureCounter.score,
+        futureCounterEvidence: futureCounter.evidence,
         personal,
       });
       pairBreakdowns.set(hero.id, pairScores);
     }
     return { scores, pairBreakdowns };
-  }, [heroes, draft.allies, draft.enemies, enemyMatrix, allySynergyMatrix, personalForHero, statById, roleMetaById]);
+  }, [heroes, draft.allies, draft.enemies, enemyMatrix, allySynergyMatrix, personalForHero, statById, roleMetaById, enemyForecast, forecastMatrices]);
 
   const usedIds = useMemo(() => new Set([...draft.allies.map(h => h.id), ...draft.enemies.map(h => h.id), ...draft.bans.map(h => h.id)]), [draft]);
   const roleEligibleHeroes = useMemo(() => heroes.filter(hero => matchesLane(hero, laneFilter)), [heroes, laneFilter]);
@@ -898,7 +982,7 @@ export default function App() {
 
         <main className="center-stage">
           <HeroGrid beginnerMode={beginnerMode} allHeroes={heroes} roleHeroes={roleEligibleHeroes} heroes={filteredHeroes} scores={scoreBundle.scores} stateForHero={stateForHero} onAction={actOnHero} onPrefetchEvidence={prefetchCounterEvidence} query={query} setQuery={setQuery} attr={attr} setAttr={setAttr} loadingLive={matrixLoading || rosterLoading} laneFilter={laneFilter} setLaneFilter={setLaneFilter} playerSide={playerSide} />
-          <RecommendationPanel beginnerMode={beginnerMode} recommendations={recommendations} onPick={actOnHero} draftComplete={draftComplete} allyCount={draft.allies.length} enemyCount={draft.enemies.length} laneLabel={laneLabels[laneFilter]} laneFilter={laneFilter} setLaneFilter={setLaneFilter} matrixLoading={matrixLoading} advisorMode={advisorMode} setAdvisorMode={setAdvisorMode} playerSide={playerSide} patch={patch} providerStatus={providerStatus} />
+          <RecommendationPanel beginnerMode={beginnerMode} recommendations={recommendations} enemyForecast={enemyForecast} forecastLoading={forecastLoading} onPick={actOnHero} draftComplete={draftComplete} allyCount={draft.allies.length} enemyCount={draft.enemies.length} laneLabel={laneLabels[laneFilter]} laneFilter={laneFilter} setLaneFilter={setLaneFilter} matrixLoading={matrixLoading} advisorMode={advisorMode} setAdvisorMode={setAdvisorMode} playerSide={playerSide} patch={patch} providerStatus={providerStatus} />
 
           {!beginnerMode && <section className="advanced-sections">
             <details>
