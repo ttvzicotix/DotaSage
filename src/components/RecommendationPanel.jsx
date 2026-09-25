@@ -1,6 +1,6 @@
 export const positionOptions = [
-  ['all', 'FLEX'], ['safe', 'SAFE · 1'], ['mid', 'MID · 2'], ['off', 'OFF · 3'],
-  ['support4', 'SUPPORT · 4'], ['support5', 'HARD SUP · 5'], ['jungle', 'JUNGLE'], ['roam', 'ROAM'],
+  ['all', 'FLEX'], ['safe', '1 CARRY'], ['mid', '2 MID'], ['off', '3 OFF'],
+  ['support4', '4 SUPPORT'], ['support5', '5 HARD SUP'], ['jungle', 'JUNGLE'], ['roam', 'ROAM'],
 ];
 
 export const advisorModes = [
@@ -59,13 +59,13 @@ function PrimaryPick({ beginnerMode = true, entry, onPick, mode, draftComplete, 
         <div><span>TOP RECOMMENDATION</span><strong>{hero.localized_name}</strong></div>
         <b>{score.draftFit.toFixed(1)}</b>
       </div>
-      <p>{reasonFor(entry, mode)}{!beginnerMode && (personal?.games ? ` · you: ${personal.games} games` : ' · low personal experience')}</p>
-      <div className={`simple-pick-summary ${beginnerMode ? '' : 'advanced-summary'}`}>
+      {!beginnerMode && <p>{reasonFor(entry, mode)}{personal?.games ? ` · you: ${personal.games} games` : ' · low personal experience'}</p>}
+      <div className={`simple-pick-summary ${beginnerMode ? 'minimal-summary' : 'advanced-summary'}`}>
         <span><small>COUNTER</small><b className={score.enemyScore >= 0 ? 'positive' : 'negative'}>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b></span>
         {!beginnerMode && <span><small>SYNERGY</small><b className={score.synergyScore >= 0 ? 'positive' : 'negative'}>{score.synergyScore > 0 ? '+' : ''}{score.synergyScore.toFixed(1)}</b></span>}
         {!beginnerMode && <span><small>META</small><b>{score.metaScore.toFixed(1)}</b></span>}
         <span><small>CONFIDENCE</small><b>{evidence.label}</b></span>
-        <span><small>COVERAGE</small><b>{evidence.verified.length}/{Math.max(enemyCount, 0)}</b></span>
+        {!beginnerMode && <span><small>COVERAGE</small><b>{evidence.verified.length}/{Math.max(enemyCount, 0)}</b></span>}
       </div>
       <button onClick={() => onPick(hero, 'self')}>{beginnerMode ? 'PICK HERO' : `LOCK PICK${draftComplete ? ' · GAME PLAN READY' : ''}`} <span>→</span></button>
     </div>
@@ -146,8 +146,8 @@ export default function RecommendationPanel({
   return <section className="recommend-panel glass-panel advisor-panel">
     <div className="recommend-head advisor-head consolidated-advisor-head">
       <div>
-        <div className="eyebrow">{beginnerMode ? 'COUNTER-FIRST ADVISOR' : `PICK ADVISOR · ${playerSide.toUpperCase()}`}</div>
-        <h2>{beginnerMode ? 'Recommended pick' : 'Draft recommendation'}</h2>
+        {!beginnerMode && <div className="eyebrow">PICK ADVISOR · {playerSide.toUpperCase()}</div>}
+        <h2>{beginnerMode ? 'Pick' : 'Draft recommendation'}</h2>
       </div>
       <div className="recommend-selects">
         <div className="recommend-role-buttons" aria-label="Choose role">
@@ -157,7 +157,7 @@ export default function RecommendationPanel({
           {advisorModes.map(([key,label]) => <option key={key} value={key}>{label}</option>)}
         </select></label>}
       </div>
-      {matrixLoading && <div className="simple-ranking-status">Updating…</div>}
+      {matrixLoading && <div className="simple-ranking-status"><i /> Updating</div>}
     </div>
     {top ? <>
       <div className="advisor-results">
