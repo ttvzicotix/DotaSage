@@ -713,6 +713,7 @@ export default function App() {
       if (prefetched) {
         setEnemyMatrix(previous => new Map(previous).set(Number(hero.id), prefetched));
       } else {
+        setMatrixLoading(true);
         prefetchCounterEvidence(hero);
       }
     }
