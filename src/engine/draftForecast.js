@@ -1,5 +1,5 @@
-import { compositionSynergyScore, heroBaseWinRate, pairCounterScore } from './scoring';
-import { matchesLane } from './roleEligibility';
+import { compositionSynergyScore, heroBaseWinRate, pairCounterScore } from './scoring.js';
+import { matchesLane } from './roleEligibility.js';
 
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 const positions = ['safe', 'mid', 'off', 'support4', 'support5'];
