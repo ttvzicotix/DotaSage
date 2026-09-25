@@ -1,6 +1,7 @@
 import { FALLBACK_HEROES } from '../data/fallbackHeroes.js';
 
 const BASE = 'https://api.opendota.com/api';
+const HERO_CACHE_KEY = 'heroes:v3';
 const matchupCache = new Map();
 const evidenceCache = new Map();
 const durationCache = new Map();
@@ -57,7 +58,7 @@ export function clearPatchSensitiveCaches() {
   itemPopularityCache.clear();
   if (typeof window === 'undefined') return;
   try {
-    const exact = ['dotasage:heroes', 'dotasage:heroStats', 'dotasage:items'];
+    const exact = ['dotasage:heroes', 'dotasage:heroes:v2', 'dotasage:heroes:v3', 'dotasage:heroStats', 'dotasage:items'];
     exact.forEach(key => window.localStorage.removeItem(key));
     for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
       const key = window.localStorage.key(index);
@@ -160,22 +161,41 @@ export async function requestPlayerRefresh(accountId) {
   }
 }
 
+function fallbackHeroRoster() {
+  return FALLBACK_HEROES
+    .filter(hero => hero?.id && hero?.localized_name)
+    .map(hero => ({ ...hero, name: hero.name || hero.localized_name }));
+}
+
 export async function fetchHeroes() {
   try {
-    const live = await getJson('/heroes', { ttlMs: 24 * 60 * 60 * 1000, cacheKey: 'heroes' });
-    return live.map(hero => {
-      const fallback = fallbackById.get(Number(hero.id)) || fallbackByName.get(hero.localized_name) || {};
-      return {
-        ...fallback,
-        ...hero,
-        name: hero.name,
-        lanes: fallback.lanes || [],
-        roleHints: fallback.roles || [],
-      };
+    const live = await getJson('/heroes', {
+      ttlMs: 24 * 60 * 60 * 1000,
+      cacheKey: HERO_CACHE_KEY,
     });
+
+    if (!Array.isArray(live) || live.length < 100) {
+      throw new Error(`Invalid OpenDota hero roster: ${Array.isArray(live) ? live.length : 'not-array'} rows`);
+    }
+
+    const roster = live
+      .filter(hero => hero?.id && hero?.localized_name)
+      .map(hero => {
+        const fallback = fallbackById.get(Number(hero.id)) || fallbackByName.get(hero.localized_name) || {};
+        return {
+          ...fallback,
+          ...hero,
+          name: hero.name,
+          lanes: fallback.lanes || [],
+          roleHints: fallback.roleHints || fallback.roles || [],
+        };
+      });
+
+    if (roster.length < 100) throw new Error(`Normalized hero roster too small: ${roster.length}`);
+    return roster;
   } catch (error) {
-    console.warn('OpenDota hero roster unavailable; using fallback identity list.', error);
-    return FALLBACK_HEROES.map(hero => ({ ...hero, name: hero.name || hero.localized_name }));
+    console.warn('OpenDota hero roster unavailable/invalid; using bundled fallback roster.', error);
+    return fallbackHeroRoster();
   }
 }
 

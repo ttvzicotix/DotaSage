@@ -205,13 +205,31 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const [roster, stats] = await Promise.all([fetchHeroes(), fetchHeroStats()]);
-        if (cancelled) return;
-        setHeroes(roster.filter(h => h.id && h.localized_name).map(h => ({ ...h, portrait: portraitUrl(h) })).sort((a, b) => a.localized_name.localeCompare(b.localized_name)));
-        setHeroStats(stats);
-      } catch (error) { console.error(error); }
-      finally { if (!cancelled) setRosterLoading(false); }
+      setRosterLoading(true);
+      const [rosterResult, statsResult] = await Promise.allSettled([
+        fetchHeroes(),
+        fetchHeroStats(),
+      ]);
+      if (cancelled) return;
+
+      if (rosterResult.status === 'fulfilled' && Array.isArray(rosterResult.value) && rosterResult.value.length) {
+        const roster = rosterResult.value
+          .filter(h => h?.id && h?.localized_name)
+          .map(h => ({ ...h, portrait: portraitUrl(h) }))
+          .sort((a, b) => a.localized_name.localeCompare(b.localized_name));
+        setHeroes(roster);
+      } else {
+        console.error('Hero roster failed to load', rosterResult.status === 'rejected' ? rosterResult.reason : rosterResult.value);
+      }
+
+      if (statsResult.status === 'fulfilled' && Array.isArray(statsResult.value)) {
+        setHeroStats(statsResult.value);
+      } else {
+        console.warn('Hero stats unavailable; roster remains usable.', statsResult.status === 'rejected' ? statsResult.reason : statsResult.value);
+        setHeroStats([]);
+      }
+
+      setRosterLoading(false);
     })();
     return () => { cancelled = true; };
   }, [patch.id]);
