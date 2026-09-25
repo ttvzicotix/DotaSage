@@ -601,48 +601,44 @@ export default function App() {
     });
   }, [heroes, draft.enemies, draft.allies, forecastUsedIds, statById]);
 
+  const preliminaryForecastSignature = useMemo(
+    () => preliminaryEnemyForecast.slice(0, 6).map(row => row.hero.id).join('-'),
+    [preliminaryEnemyForecast],
+  );
+
   useEffect(() => {
     let cancelled = false;
     let timer = null;
-    if (!preliminaryEnemyForecast.length || draft.enemies.length >= 5) {
+
+    if (!preliminaryForecastSignature || draft.enemies.length >= 5) {
       setForecastLoading(false);
-      setForecastMatrices(new Map());
+      setForecastMatrices(previous => previous.size ? new Map() : previous);
       return undefined;
     }
 
-    timer = window.setTimeout(() => {
-      const targets = preliminaryEnemyForecast.slice(0, 6);
-      const missing = targets.filter(row => !forecastMatrices.has(Number(row.hero.id)));
-      if (!missing.length) {
-        setForecastLoading(false);
-        return;
-      }
-
+    timer = window.setTimeout(async () => {
       setForecastLoading(true);
-      let pending = missing.length;
-      missing.forEach(row => {
-        fetchHeroMatchups(row.hero.id)
-          .then(rows => {
-            if (cancelled) return;
-            setForecastMatrices(previous => {
-              const next = new Map(previous);
-              next.set(Number(row.hero.id), Array.isArray(rows) ? rows : []);
-              return next;
-            });
-          })
-          .catch(() => {})
-          .finally(() => {
-            pending -= 1;
-            if (!cancelled && pending <= 0) setForecastLoading(false);
-          });
+      const targets = preliminaryEnemyForecast.slice(0, 6);
+      const results = await Promise.allSettled(
+        targets.map(row => fetchHeroMatchups(row.hero.id)),
+      );
+      if (cancelled) return;
+
+      const next = new Map();
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          next.set(Number(targets[index].hero.id), Array.isArray(result.value) ? result.value : []);
+        }
       });
-    }, 220);
+      setForecastMatrices(next);
+      setForecastLoading(false);
+    }, 260);
 
     return () => {
       cancelled = true;
       if (timer) window.clearTimeout(timer);
     };
-  }, [preliminaryEnemyForecast, draft.enemies.length, forecastMatrices]);
+  }, [preliminaryForecastSignature, draft.enemies.length, patch.id]);
 
   const enemyForecast = useMemo(() => {
     if (!draft.enemies.length || draft.enemies.length >= 5) return [];
