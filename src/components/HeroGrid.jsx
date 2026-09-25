@@ -124,7 +124,7 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
   return <section className={`hero-browser glass-panel ${expanded ? 'expanded' : 'collapsed'}`}>
     <div className="quick-add-row consolidated-quick-row">
       <div className="search-box hero-search">
-        <span>⌕</span>
+        <span aria-hidden="true">⌕</span>
         <input
           ref={inputRef}
           value={query}
@@ -133,7 +133,6 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
           placeholder="Search hero or alias…"
           autoComplete="off"
         />
-        <kbd>/</kbd>
       </div>
       <button className="browse-toggle" onClick={() => setExpanded(true)}>ALL HEROES <b>⌄</b></button>
     </div>
