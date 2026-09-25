@@ -2631,9 +2631,6 @@ body {
 .hero-card-v27-actions .dire{color:#eea0a3;border-color:rgba(225,90,93,.16)}
 .hero-card-v27-actions .pick{color:#ead18c;border-color:rgba(230,189,105,.18)}
 .hero-card-v27-actions .ban{color:#b79ac7}
-.advanced-layout .hero-card-v27-actions{
-  grid-template-columns:1fr 1fr .9fr .75fr;
-}
 .hero-card-v27.used{
   opacity:.48;
   filter:saturate(.65);
