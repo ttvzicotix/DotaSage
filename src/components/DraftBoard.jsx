@@ -73,7 +73,7 @@ export default function DraftBoard({ beginnerMode = true, draft, onRemove, onCle
           <div className="lock-hero"><img src={draft.self.portrait} alt="" /><strong>{draft.self.localized_name}</strong></div>
           <button className="primary-button" onClick={onOpenGamePlan}>{complete ? 'GAME PLAN' : 'PREVIEW GAME PLAN'} <b>→</b></button>
           {!beginnerMode && !complete && <small className="draft-readiness">Pick locked. Complete both lineups to enter Game Plan automatically.</small>}
-        </> : <p>Choose ★ Pick on a hero.</p>}
+        </> : <div className="empty-pick-v27"><b>—</b></div>}
       </div>
     </section>
   );
