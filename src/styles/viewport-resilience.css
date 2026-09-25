@@ -3023,3 +3023,113 @@ body {
   .advisor-details-v27-body{grid-template-columns:1fr}
   .advisor-details-v27-metrics{grid-template-columns:repeat(3,1fr)}
 }
+
+
+/* v0.27 full roster cards ------------------------------------------------ */
+.roster-card-v27{
+  min-width:0;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.055);
+  border-radius:13px;
+  background:#0a0c12;
+}
+.roster-card-v27-art{
+  width:100%;
+  aspect-ratio:16/9;
+  overflow:hidden;
+  background:#07090d;
+}
+.roster-card-v27-art img{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.roster-card-v27-foot{
+  position:relative;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:6px;
+  align-items:center;
+  min-height:38px;
+  padding:0 8px;
+  background:#0c0f15;
+  border-top:1px solid rgba(255,255,255,.04);
+}
+.roster-card-v27-foot>strong{
+  min-width:0;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  color:#cbd3de;
+  font:700 10px Barlow Condensed;
+}
+.roster-card-v27-foot>span{
+  font:700 9px Barlow Condensed;
+}
+.roster-card-v27-foot>em{
+  grid-column:1/-1;
+  color:#7f8998;
+  text-align:center;
+  font:700 9px Barlow Condensed;
+  font-style:normal;
+}
+.roster-card-v27-actions{
+  position:absolute;
+  inset:4px;
+  display:grid;
+  grid-template-columns:1fr 1fr .8fr .7fr;
+  gap:3px;
+  opacity:0;
+  pointer-events:none;
+  background:#0c0f15;
+  transition:opacity .12s ease;
+}
+.roster-card-v27:hover .roster-card-v27-actions,
+.roster-card-v27:focus-within .roster-card-v27-actions{
+  opacity:1;
+  pointer-events:auto;
+}
+.roster-card-v27-actions button{
+  min-height:30px!important;
+  height:30px;
+  border:1px solid rgba(255,255,255,.05);
+  border-radius:7px;
+  background:rgba(255,255,255,.015);
+  color:#8993a2;
+  cursor:pointer;
+  font:700 8px Barlow Condensed!important;
+  padding:0 3px;
+}
+.roster-card-v27-actions .radiant{color:#9ee5b7}
+.roster-card-v27-actions .dire{color:#eea0a3}
+.roster-card-v27-actions .pick{color:#ead18c}
+.roster-card-v27-actions .ban{color:#b79ac7}
+.roster-card-v27.used{opacity:.52}
+.roster-full-grid{
+  grid-template-columns:repeat(auto-fill,minmax(150px,1fr))!important;
+  gap:9px!important;
+}
+.empty-pick-v27{
+  min-height:22px;
+  display:flex;
+  align-items:center;
+}
+.empty-pick-v27 b{
+  color:#4f5866;
+  font-size:16px;
+  font-weight:500;
+}
+@media(max-width:780px){
+  .roster-card-v27-actions{
+    position:static;
+    grid-column:1/-1;
+    opacity:1;
+    pointer-events:auto;
+    padding:4px 0;
+    background:transparent;
+  }
+  .roster-card-v27-foot{
+    min-height:74px;
+  }
+}
