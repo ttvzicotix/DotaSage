@@ -8,8 +8,8 @@ function DraftSlot({ hero, onRemove }) {
   );
 }
 
-function EmptySlot({ side, index }) {
-  return <div className="draft-slot empty"><i>{index}</i><span>{side}</span></div>;
+function EmptySlot({ index }) {
+  return <div className="draft-slot empty" aria-label={`Empty slot ${index}`}><i>{index}</i><span>＋</span></div>;
 }
 
 function TeamBlock({ label, type, side, heroes, count, onRemove }) {
@@ -18,7 +18,7 @@ function TeamBlock({ label, type, side, heroes, count, onRemove }) {
       <div className="team-block-head"><span>{label}</span><small>{heroes.length}/{count}</small></div>
       <div className="slot-stack">
         {heroes.map(hero => <DraftSlot key={hero.id} hero={hero} onRemove={onRemove} />)}
-        {Array.from({ length: Math.max(0, count - heroes.length) }).map((_, i) => <EmptySlot key={i} side={side} index={heroes.length + i + 1} />)}
+        {Array.from({ length: Math.max(0, count - heroes.length) }).map((_, i) => <EmptySlot key={i} index={heroes.length + i + 1} />)}
       </div>
     </div>
   );
@@ -73,7 +73,7 @@ export default function DraftBoard({ beginnerMode = true, draft, onRemove, onCle
           <div className="lock-hero"><img src={draft.self.portrait} alt="" /><strong>{draft.self.localized_name}</strong></div>
           <button className="primary-button" onClick={onOpenGamePlan}>{complete ? 'GAME PLAN' : 'PREVIEW GAME PLAN'} <b>→</b></button>
           {!beginnerMode && !complete && <small className="draft-readiness">Pick locked. Complete both lineups to enter Game Plan automatically.</small>}
-        </> : <p>Choose your hero with Add to → My Pick.</p>}
+        </> : <p>Choose ★ Pick on a hero.</p>}
       </div>
     </section>
   );

@@ -16,28 +16,31 @@ const laneLabels = {
   jungle: 'JUNGLE',
   roam: 'ROAM',
 };
-function QuickHero({ hero, state, onAction, playerSide, beginnerMode }) {
+function QuickHero({ hero, state, onAction, onPrefetchEvidence, playerSide, beginnerMode }) {
   const used = state && state !== 'available';
   const radiantAction = playerSide === 'radiant' ? 'ally' : 'enemy';
   const direAction = playerSide === 'dire' ? 'ally' : 'enemy';
-  return <article className={`quick-hero-tile quick-result-card ${used ? `used ${state}` : ''}`}>
-    <div className="quick-hero-main">
-      <img src={hero.portrait} alt="" />
-      <span className="quick-hero-name">
-        <strong>{hero.localized_name}</strong>
-        <small>{used ? (state === 'self' ? 'YOUR PICK' : state.toUpperCase()) : (hero.roles || []).slice(0, 2).join(' · ')}</small>
-      </span>
+  return <article
+    className={`quick-hero-tile quick-result-card clean-hero-card ${used ? `used ${state}` : ''}`}
+    onPointerEnter={() => onPrefetchEvidence?.(hero)}
+    onFocus={() => onPrefetchEvidence?.(hero)}
+  >
+    <div className="quick-result-portrait"><img src={hero.portrait} alt="" /></div>
+    <div className="quick-result-footer">
+      <strong className="quick-result-name">{hero.localized_name}</strong>
+      {used
+        ? <span className="quick-result-state">{state === 'self' ? 'YOUR PICK' : state.toUpperCase()}</span>
+        : <div className="quick-result-actions">
+            <button className="radiant" onClick={() => onAction(hero, radiantAction)} title="Add to Radiant">RADIANT</button>
+            <button className="dire" onClick={() => onAction(hero, direAction)} title="Add to Dire">DIRE</button>
+            <button className="pick" onClick={() => onAction(hero, 'self')} title="Set as your pick">★ PICK</button>
+            {!beginnerMode && <button className="ban" onClick={() => onAction(hero, 'ban')} title="Ban hero">BAN</button>}
+          </div>}
     </div>
-    {!used && <div className="quick-result-actions">
-      <button className="radiant" onClick={() => onAction(hero, radiantAction)}>RADIANT</button>
-      <button className="dire" onClick={() => onAction(hero, direAction)}>DIRE</button>
-      <button className="pick" onClick={() => onAction(hero, 'self')}>★ MY PICK</button>
-      {!beginnerMode && <button className="ban" onClick={() => onAction(hero, 'ban')}>BAN</button>}
-    </div>}
   </article>;
 }
 
-export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, heroes, scores, stateForHero, onAction, query, setQuery, attr, setAttr, loadingLive, laneFilter, setLaneFilter, playerSide = 'radiant' }) {
+export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, heroes, scores, stateForHero, onAction, onPrefetchEvidence, query, setQuery, attr, setAttr, loadingLive, laneFilter, setLaneFilter, playerSide = 'radiant' }) {
   const [expanded, setExpanded] = useState(false);
   const [rosterScope, setRosterScope] = useState('all');
   const [renderLimit, setRenderLimit] = useState(INITIAL_ROSTER);
@@ -74,6 +77,14 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
   }, [scopedRosterHeroes, deferredQuery, renderLimit]);
 
   useEffect(() => { if (expanded) setRenderLimit(INITIAL_ROSTER); }, [expanded, rosterScope, laneFilter]);
+
+  useEffect(() => {
+    if (!quickHeroes.length || !onPrefetchEvidence) return undefined;
+    const timer = window.setTimeout(() => {
+      quickHeroes.slice(0, 8).forEach(hero => onPrefetchEvidence(hero));
+    }, query.trim() ? 60 : 180);
+    return () => window.clearTimeout(timer);
+  }, [quickHeroes, query, onPrefetchEvidence]);
 
   useEffect(() => {
     const handleKey = event => {
@@ -127,12 +138,10 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
     <div className="quick-hero-shelf persistent-hero-gallery">
       <div className="quick-shelf-label">
         <span>{query.trim() ? 'SEARCH RESULTS' : `${laneLabels[laneFilter] || 'HEROES'} · QUICK PICKS`}</span>
-        <small>{query.trim()
-          ? 'Choose Radiant, Dire, or My Pick directly on the hero card.'
-          : 'Role-relevant heroes stay visible here. Search above or open All Heroes for the full roster.'}</small>
+        <small>{query.trim() ? 'Select a side or pick.' : ''}</small>
       </div>
       <div className="quick-hero-scroll">{quickHeroes.length
-        ? quickHeroes.map(hero => <QuickHero key={hero.id} hero={hero} state={stateForHero(hero.id)} onAction={runAction} playerSide={playerSide} beginnerMode={beginnerMode} />)
+        ? quickHeroes.map(hero => <QuickHero key={hero.id} hero={hero} state={stateForHero(hero.id)} onAction={runAction} onPrefetchEvidence={onPrefetchEvidence} playerSide={playerSide} beginnerMode={beginnerMode} />)
         : <div className="quick-no-results">{query.trim() ? 'No hero or alias matches that search.' : 'No available heroes match this role.'}</div>}</div>
     </div>
 

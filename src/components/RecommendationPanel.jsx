@@ -1,6 +1,6 @@
 export const positionOptions = [
-  ['all', 'FLEX'], ['safe', 'SAFE · 1'], ['mid', 'MID · 2'], ['off', 'OFF · 3'],
-  ['support4', 'SUPPORT · 4'], ['support5', 'HARD SUP · 5'], ['jungle', 'JUNGLE'], ['roam', 'ROAM'],
+  ['all', 'FLEX'], ['safe', '1 CARRY'], ['mid', '2 MID'], ['off', '3 OFF'],
+  ['support4', '4 SUPPORT'], ['support5', '5 HARD SUP'], ['jungle', 'JUNGLE'], ['roam', 'ROAM'],
 ];
 
 export const advisorModes = [
@@ -37,7 +37,7 @@ function evidenceFor(entry, enemyCount = 0) {
   return { verified, games, avgConfidence, coverage, providers, label };
 }
 
-function PrimaryPick({ beginnerMode = true, entry, onPick, mode, draftComplete, enemyCount, patch, providerStatus }) {
+function PrimaryPick({ beginnerMode = true, entry, onPick, mode, draftComplete, enemyCount, patch, providerStatus, refreshing = false }) {
   const { hero, score, personal } = entry;
   const evidence = evidenceFor(entry, enemyCount);
   const sourceText = evidence.providers.length
@@ -59,15 +59,15 @@ function PrimaryPick({ beginnerMode = true, entry, onPick, mode, draftComplete, 
         <div><span>TOP RECOMMENDATION</span><strong>{hero.localized_name}</strong></div>
         <b>{score.draftFit.toFixed(1)}</b>
       </div>
-      <p>{reasonFor(entry, mode)}{!beginnerMode && (personal?.games ? ` · you: ${personal.games} games` : ' · low personal experience')}</p>
-      <div className={`simple-pick-summary ${beginnerMode ? '' : 'advanced-summary'}`}>
+      {!beginnerMode && <p>{reasonFor(entry, mode)}{personal?.games ? ` · you: ${personal.games} games` : ' · low personal experience'}</p>}
+      <div className={`simple-pick-summary ${beginnerMode ? 'minimal-summary' : 'advanced-summary'}`}>
         <span><small>COUNTER</small><b className={score.enemyScore >= 0 ? 'positive' : 'negative'}>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b></span>
         {!beginnerMode && <span><small>SYNERGY</small><b className={score.synergyScore >= 0 ? 'positive' : 'negative'}>{score.synergyScore > 0 ? '+' : ''}{score.synergyScore.toFixed(1)}</b></span>}
         {!beginnerMode && <span><small>META</small><b>{score.metaScore.toFixed(1)}</b></span>}
         <span><small>CONFIDENCE</small><b>{evidence.label}</b></span>
-        <span><small>COVERAGE</small><b>{evidence.verified.length}/{Math.max(enemyCount, 0)}</b></span>
+        {!beginnerMode && <span><small>COVERAGE</small><b>{evidence.verified.length}/{Math.max(enemyCount, 0)}</b></span>}
       </div>
-      <button onClick={() => onPick(hero, 'self')}>{beginnerMode ? 'PICK HERO' : `LOCK PICK${draftComplete ? ' · GAME PLAN READY' : ''}`} <span>→</span></button>
+      <button disabled={refreshing} onClick={() => onPick(hero, 'self')}>{refreshing ? 'REFRESHING…' : beginnerMode ? 'PICK HERO' : `LOCK PICK${draftComplete ? ' · GAME PLAN READY' : ''}`} {!refreshing && <span>→</span>}</button>
     </div>
   </article>;
 }
@@ -111,9 +111,9 @@ function AdvisorSignals({ entry, enemyCount, patch }) {
   </div>;
 }
 
-function CompactPick({ entry, rank, onPick }) {
+function CompactPick({ entry, rank, onPick, refreshing = false }) {
   const { hero, score } = entry;
-  return <button className="compact-pick consolidated-compact-pick" onClick={() => onPick(hero, 'self')}>
+  return <button disabled={refreshing} className="compact-pick consolidated-compact-pick" onClick={() => onPick(hero, 'self')}>
     <span className="compact-rank">{rank}</span>
     <img src={hero.portrait} alt="" />
     <span className="compact-name"><strong>{hero.localized_name}</strong></span>
@@ -143,11 +143,11 @@ export default function RecommendationPanel({
   const draftContext = enemyCount
     ? `${enemyCount}/5 enemies · ${allyCount}/5 allies`
     : `${allyCount}/5 allies · no enemy counters yet`;
-  return <section className="recommend-panel glass-panel advisor-panel">
+  return <section className={`recommend-panel glass-panel advisor-panel ${matrixLoading ? 'is-refreshing' : ''}`} aria-busy={matrixLoading ? 'true' : 'false'}>
     <div className="recommend-head advisor-head consolidated-advisor-head">
       <div>
-        <div className="eyebrow">{beginnerMode ? 'COUNTER-FIRST ADVISOR' : `PICK ADVISOR · ${playerSide.toUpperCase()}`}</div>
-        <h2>{beginnerMode ? 'Recommended pick' : 'Draft recommendation'}</h2>
+        {!beginnerMode && <div className="eyebrow">PICK ADVISOR · {playerSide.toUpperCase()}</div>}
+        <h2>{beginnerMode ? 'Pick' : 'Draft recommendation'}</h2>
       </div>
       <div className="recommend-selects">
         <div className="recommend-role-buttons" aria-label="Choose role">
@@ -157,12 +157,12 @@ export default function RecommendationPanel({
           {advisorModes.map(([key,label]) => <option key={key} value={key}>{label}</option>)}
         </select></label>}
       </div>
-      {matrixLoading && <div className="simple-ranking-status">Updating…</div>}
+      {matrixLoading && <div className="simple-ranking-status"><i /> Updating</div>}
     </div>
     {top ? <>
       <div className="advisor-results">
-        <PrimaryPick beginnerMode={beginnerMode} entry={top} onPick={onPick} mode={advisorMode} draftComplete={draftComplete} enemyCount={enemyCount} patch={patch} providerStatus={providerStatus} />
-        <div className="compact-pick-list">{recommendations.slice(1,beginnerMode ? 5 : 7).map((entry,i)=><CompactPick key={entry.hero.id} entry={entry} rank={i+2} onPick={onPick} />)}</div>
+        <PrimaryPick beginnerMode={beginnerMode} entry={top} onPick={onPick} mode={advisorMode} draftComplete={draftComplete} enemyCount={enemyCount} patch={patch} providerStatus={providerStatus} refreshing={matrixLoading} />
+        <div className="compact-pick-list">{recommendations.slice(1,beginnerMode ? 5 : 7).map((entry,i)=><CompactPick key={entry.hero.id} entry={entry} rank={i+2} onPick={onPick} refreshing={matrixLoading} />)}</div>
       </div>
       {!beginnerMode && <details className="recommend-evidence-details"><summary>WHY THIS PICK <span>evidence & matchup detail</span></summary>
         <AdvisorSignals entry={top} enemyCount={enemyCount} patch={patch} />
