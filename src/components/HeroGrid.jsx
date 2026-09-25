@@ -36,7 +36,7 @@ function QuickHero({ hero, state, onAction, onPrefetchEvidence, playerSide, begi
         : <div className="hero-card-v27-actions">
             <button className="radiant" onClick={() => onAction(hero, radiantAction)} title="Add to Radiant">RADIANT</button>
             <button className="dire" onClick={() => onAction(hero, direAction)} title="Add to Dire">DIRE</button>
-            <button className="pick" onClick={() => onAction(hero, 'self')} title="Set as your hero">PICK</button>}
+            <button className="pick" onClick={() => onAction(hero, 'self')} title="Set as your hero">PICK</button>
           </div>}
     </div>
   </article>;
