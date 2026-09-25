@@ -5,6 +5,17 @@ import { heroSearchScore } from '../data/heroAliases';
 const attrs = [['allFilter', 'ALL'], ['str', 'STR'], ['agi', 'AGI'], ['int', 'INT'], ['all', 'UNI']];
 const INITIAL_ROSTER = 48;
 const ROSTER_STEP = 48;
+
+const laneLabels = {
+  all: 'ALL HEROES',
+  safe: 'SAFE LANE',
+  mid: 'MID',
+  off: 'OFFLANE',
+  support4: 'SUPPORT 4',
+  support5: 'HARD SUPPORT 5',
+  jungle: 'JUNGLE',
+  roam: 'ROAM',
+};
 function QuickHero({ hero, state, onAction, playerSide, beginnerMode }) {
   const used = state && state !== 'available';
   const radiantAction = playerSide === 'radiant' ? 'ally' : 'enemy';
@@ -36,13 +47,21 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
 
   const quickHeroes = useMemo(() => {
     const q = query.trim();
-    const rows = allHeroes
+    const defaultPool = laneFilter === 'all' ? allHeroes : roleHeroes;
+    const pool = q ? allHeroes : defaultPool;
+    const rows = pool
       .filter(hero => q || stateForHero(hero.id) === 'available')
-      .map(hero => ({ hero, score: q ? heroSearchScore(hero, q) : 0 }))
-      .filter(row => !q || row.score >= 0)
-      .sort((a, b) => q ? (b.score - a.score || a.hero.localized_name.localeCompare(b.hero.localized_name)) : a.hero.localized_name.localeCompare(b.hero.localized_name));
-    return rows.slice(0, 8).map(row => row.hero);
-  }, [allHeroes, query, stateForHero]);
+      .map(hero => ({
+        hero,
+        searchScore: q ? heroSearchScore(hero, q) : 0,
+        recommendationScore: Number(scores?.get(hero.id)?.overall ?? scores?.get(hero.id)?.draftFit ?? 0),
+      }))
+      .filter(row => !q || row.searchScore >= 0)
+      .sort((a, b) => q
+        ? (b.searchScore - a.searchScore || b.recommendationScore - a.recommendationScore || a.hero.localized_name.localeCompare(b.hero.localized_name))
+        : (b.recommendationScore - a.recommendationScore || a.hero.localized_name.localeCompare(b.hero.localized_name)));
+    return rows.slice(0, q ? 8 : beginnerMode ? 12 : 16).map(row => row.hero);
+  }, [allHeroes, roleHeroes, laneFilter, beginnerMode, query, stateForHero, scores]);
 
   const scopedRosterHeroes = useMemo(() => {
     if (rosterScope !== 'position' || laneFilter === 'all') return heroes;
@@ -102,18 +121,20 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
         />
         <kbd>/</kbd>
       </div>
-      <button className="browse-toggle" onClick={() => setExpanded(true)}>ROSTER <b>⌄</b></button>
+      <button className="browse-toggle" onClick={() => setExpanded(true)}>ALL HEROES <b>⌄</b></button>
     </div>
 
-    {query.trim() && <div className="quick-hero-shelf">
+    <div className="quick-hero-shelf persistent-hero-gallery">
       <div className="quick-shelf-label">
-        <span>{query ? 'MATCHES' : 'QUICK HEROES'}</span>
-        <small>Choose Radiant, Dire, or My Pick directly on the hero card.</small>
+        <span>{query.trim() ? 'SEARCH RESULTS' : `${laneLabels[laneFilter] || 'HEROES'} · QUICK PICKS`}</span>
+        <small>{query.trim()
+          ? 'Choose Radiant, Dire, or My Pick directly on the hero card.'
+          : 'Role-relevant heroes stay visible here. Search above or open All Heroes for the full roster.'}</small>
       </div>
       <div className="quick-hero-scroll">{quickHeroes.length
         ? quickHeroes.map(hero => <QuickHero key={hero.id} hero={hero} state={stateForHero(hero.id)} onAction={runAction} playerSide={playerSide} beginnerMode={beginnerMode} />)
-        : <div className="quick-no-results">No hero or alias matches that search.</div>}</div>
-    </div>}
+        : <div className="quick-no-results">{query.trim() ? 'No hero or alias matches that search.' : 'No available heroes match this role.'}</div>}</div>
+    </div>
 
     {expanded && <div className="roster-screen">
       <div className="roster-screen-inner">
