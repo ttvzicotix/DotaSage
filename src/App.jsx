@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './styles.css';
 import { DEFAULT_PROFILE } from './data/defaultProfile';
 import { fetchHeroes, fetchHeroMatchups, fetchHeroStats, fetchPlayer, fetchPlayerHeroes, fetchPlayerWinLoss, fetchRecentMatches, fetchPlayerMatchHistory, fetchHeroDurations, fetchHeroItemPopularity, fetchHeroEvidence, fetchItems, portraitUrl } from './services/openDota';
@@ -133,10 +133,29 @@ export default function App() {
   const [draftSessionHydrated, setDraftSessionHydrated] = useState(false);
   const lastAutoPlanSignatureRef = useRef('');
   const lastLocalDraftSignatureRef = useRef('');
+  const enemyMatrixRef = useRef(new Map());
+  const prefetchedCounterRowsRef = useRef(new Map());
+  const prefetchInFlightRef = useRef(new Set());
 
   const statById = useMemo(() => new Map(heroStats.map(s => [Number(s.id), s])), [heroStats]);
   const heroById = useMemo(() => new Map(heroes.map(hero => [Number(hero.id), hero])), [heroes]);
   const roleMetaById = useMemo(() => new Map((roleMeta?.rows || []).map(row => [Number(row.hero_id), row])), [roleMeta]);
+  useEffect(() => {
+    enemyMatrixRef.current = enemyMatrix;
+  }, [enemyMatrix]);
+
+  const prefetchCounterEvidence = useCallback(hero => {
+    const heroId = Number(hero?.id);
+    if (!heroId || prefetchedCounterRowsRef.current.has(heroId) || prefetchInFlightRef.current.has(heroId)) return;
+    prefetchInFlightRef.current.add(heroId);
+    fetchHeroMatchups(heroId)
+      .then(rows => {
+        if (Array.isArray(rows)) prefetchedCounterRowsRef.current.set(heroId, rows);
+      })
+      .catch(() => {})
+      .finally(() => prefetchInFlightRef.current.delete(heroId));
+  }, []);
+
 
   useEffect(() => {
     if (draftSessionHydrated || !heroes.length) return;
@@ -409,22 +428,66 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!draft.enemies.length) { setEnemyMatrix(new Map()); setMatrixLoading(false); return undefined; }
-    (async () => {
-      setMatrixLoading(true);
+    const activeIds = new Set(draft.enemies.map(enemy => Number(enemy.id)));
+
+    if (!draft.enemies.length) {
+      setEnemyMatrix(new Map());
+      setMatrixLoading(false);
+      return undefined;
+    }
+
+    // Preserve evidence we already have and seed instantly from hover/search prefetch.
+    setEnemyMatrix(previous => {
       const next = new Map();
-      await Promise.all(draft.enemies.map(async enemy => {
-        try { next.set(enemy.id, await fetchHeroMatchups(enemy.id)); }
-        catch (error) { console.warn(`Could not load matchup rows for ${enemy.localized_name}`, error); }
-      }));
-      if (!cancelled) { setEnemyMatrix(next); setMatrixLoading(false); }
-    })();
+      for (const enemy of draft.enemies) {
+        const id = Number(enemy.id);
+        const prefetched = prefetchedCounterRowsRef.current.get(id);
+        if (prefetched) next.set(id, prefetched);
+        else if (previous.has(id)) next.set(id, previous.get(id));
+      }
+      return next;
+    });
+
+    const current = enemyMatrixRef.current;
+    const missing = draft.enemies.filter(enemy => {
+      const id = Number(enemy.id);
+      return !prefetchedCounterRowsRef.current.has(id) && !current.has(id);
+    });
+
+    if (!missing.length) {
+      setMatrixLoading(false);
+      return undefined;
+    }
+
+    setMatrixLoading(true);
+    let pending = missing.length;
+
+    for (const enemy of missing) {
+      fetchHeroMatchups(enemy.id)
+        .then(rows => {
+          if (cancelled || !activeIds.has(Number(enemy.id))) return;
+          const safeRows = Array.isArray(rows) ? rows : [];
+          prefetchedCounterRowsRef.current.set(Number(enemy.id), safeRows);
+          setEnemyMatrix(previous => {
+            const next = new Map(previous);
+            for (const id of [...next.keys()]) if (!activeIds.has(Number(id))) next.delete(id);
+            next.set(Number(enemy.id), safeRows);
+            return next;
+          });
+        })
+        .catch(error => console.warn(`Could not load matchup rows for ${enemy.localized_name}`, error))
+        .finally(() => {
+          pending -= 1;
+          if (!cancelled && pending <= 0) setMatrixLoading(false);
+        });
+    }
+
     return () => { cancelled = true; };
   }, [draft.enemies, patch.id]);
 
   useEffect(() => {
     let cancelled = false;
-    if (!draft.allies.length) {
+    if (beginnerMode || !draft.allies.length) {
       setAllySynergyMatrix(new Map());
       return undefined;
     }
@@ -442,12 +505,12 @@ export default function App() {
       if (!cancelled) setAllySynergyMatrix(next);
     })();
     return () => { cancelled = true; };
-  }, [draft.allies, patch.id]);
+  }, [draft.allies, patch.id, beginnerMode]);
 
   useEffect(() => {
     let cancelled = false;
     const selected = [...draft.allies, ...draft.enemies].filter((h, i, rows) => rows.findIndex(x => x.id === h.id) === i);
-    if (!selected.length) { setDurationData(new Map()); setDurationLoading(false); return undefined; }
+    if (beginnerMode || !selected.length) { setDurationData(new Map()); setDurationLoading(false); return undefined; }
     (async () => {
       setDurationLoading(true);
       const next = new Map();
@@ -458,7 +521,7 @@ export default function App() {
       if (!cancelled) { setDurationData(next); setDurationLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [draft.allies, draft.enemies, patch.id]);
+  }, [draft.allies, draft.enemies, patch.id, beginnerMode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -645,6 +708,15 @@ export default function App() {
   }
 
   function actOnHero(hero, action) {
+    if (action === 'enemy') {
+      const prefetched = prefetchedCounterRowsRef.current.get(Number(hero.id));
+      if (prefetched) {
+        setEnemyMatrix(previous => new Map(previous).set(Number(hero.id), prefetched));
+      } else {
+        prefetchCounterEvidence(hero);
+      }
+    }
+
     setDraft(current => {
       const scrubbed = {
         allies: current.allies.filter(h => h.id !== hero.id),
@@ -824,7 +896,7 @@ export default function App() {
         </aside>
 
         <main className="center-stage">
-          <HeroGrid beginnerMode={beginnerMode} allHeroes={heroes} roleHeroes={roleEligibleHeroes} heroes={filteredHeroes} scores={scoreBundle.scores} stateForHero={stateForHero} onAction={actOnHero} query={query} setQuery={setQuery} attr={attr} setAttr={setAttr} loadingLive={matrixLoading || rosterLoading} laneFilter={laneFilter} setLaneFilter={setLaneFilter} playerSide={playerSide} />
+          <HeroGrid beginnerMode={beginnerMode} allHeroes={heroes} roleHeroes={roleEligibleHeroes} heroes={filteredHeroes} scores={scoreBundle.scores} stateForHero={stateForHero} onAction={actOnHero} onPrefetchEvidence={prefetchCounterEvidence} query={query} setQuery={setQuery} attr={attr} setAttr={setAttr} loadingLive={matrixLoading || rosterLoading} laneFilter={laneFilter} setLaneFilter={setLaneFilter} playerSide={playerSide} />
           <RecommendationPanel beginnerMode={beginnerMode} recommendations={recommendations} onPick={actOnHero} draftComplete={draftComplete} allyCount={draft.allies.length} enemyCount={draft.enemies.length} laneLabel={laneLabels[laneFilter]} laneFilter={laneFilter} setLaneFilter={setLaneFilter} matrixLoading={matrixLoading} advisorMode={advisorMode} setAdvisorMode={setAdvisorMode} playerSide={playerSide} patch={patch} providerStatus={providerStatus} />
 
           {!beginnerMode && <section className="advanced-sections">
