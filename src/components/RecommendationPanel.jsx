@@ -1,23 +1,20 @@
-export const positionOptions = [
-  ['all', 'FLEX'], ['safe', '1 CARRY'], ['mid', '2 MID'], ['off', '3 OFF'],
-  ['support4', '4 SUPPORT'], ['support5', '5 HARD SUP'], ['jungle', 'JUNGLE'], ['roam', 'ROAM'],
+const positions = [
+  ['all', 'FLEX', 'Any position'],
+  ['safe', '1', 'Carry · Safe lane'],
+  ['mid', '2', 'Mid'],
+  ['off', '3', 'Offlane'],
+  ['support4', '4', 'Support'],
+  ['support5', '5', 'Hard support'],
 ];
 
+export const positionOptions = positions.map(([key, short, title]) => [key, title]);
 export const advisorModes = [
-  ['best', 'BEST PICK'], ['counter', 'COUNTER'], ['meta', 'META'], ['personal', 'FOR YOU'], ['learn', 'LEARN'],
+  ['best', 'Best pick'],
+  ['counter', 'Counter'],
+  ['meta', 'Meta'],
+  ['personal', 'For you'],
+  ['learn', 'Learn'],
 ];
-
-function reasonFor(entry, mode) {
-  const { score, personal } = entry;
-  if (mode === 'counter') return score.enemyScore >= 4 ? 'Strong counter profile into this enemy draft' : 'Best available matchup score';
-  if (mode === 'meta') return 'Highest current public-stat meta signal in this role';
-  if (mode === 'personal') return personal?.games ? `${personal.games} games in your public history` : 'Low personal sample, but still draft-viable';
-  if (mode === 'learn') return 'Strong draft fit outside your usual comfort pool';
-  if (score.enemyScore >= 5) return 'Excellent verified counter fit into the entered enemy draft';
-  if (score.enemyScore >= 2) return 'Strong counter-first fit into the entered enemy draft';
-  if (score.enemyScore >= 0) return 'Best available role-eligible counter fit';
-  return 'Best available role-eligible option, but the enemy draft is still uncomfortable';
-}
 
 function evidenceFor(entry, enemyCount = 0) {
   const pairs = Array.isArray(entry?.pairs) ? entry.pairs : [];
@@ -28,149 +25,137 @@ function evidenceFor(entry, enemyCount = 0) {
     : 0;
   const expected = Math.max(1, enemyCount);
   const coverage = Math.min(1, verified.length / expected);
-  const providers = [...new Set(verified.map(row => row.provider).filter(Boolean))];
 
   let label = 'LOW';
   if (coverage >= 0.8 && avgConfidence >= 0.8 && games >= 1500) label = 'HIGH';
   else if (coverage >= 0.5 && avgConfidence >= 0.55 && games >= 400) label = 'MED';
 
-  return { verified, games, avgConfidence, coverage, providers, label };
+  return { verified, games, coverage, label };
 }
 
-function PrimaryPick({ beginnerMode = true, entry, onPick, mode, draftComplete, enemyCount, patch, providerStatus, refreshing = false }) {
-  const { hero, score, personal } = entry;
-  const evidence = evidenceFor(entry, enemyCount);
-  const sourceText = evidence.providers.length
-    ? evidence.providers.join(' + ')
-    : providerStatus?.stratzConfigured
-      ? 'STRATZ / OPENDOTA READY'
-      : 'PUBLIC MATCH DATA';
-
-  return <article className="primary-pick-card v021-primary-pick">
-    <div className="primary-pick-art">
-      <img src={hero.portrait} alt="" />
-      <span>#1</span>
-      <div className={`pick-confidence-badge ${evidence.label.toLowerCase()}`}>
-        <small>CONFIDENCE</small><b>{evidence.label}</b>
-      </div>
+function ForecastStrip({ forecast = [], loading = false }) {
+  if (!forecast.length && !loading) return null;
+  return <div className="enemy-forecast-v27">
+    <span>LIKELY NEXT</span>
+    <div>
+      {forecast.slice(0, 3).map(row => <div
+        className="enemy-forecast-v27-card"
+        key={row.hero.id}
+        title="Heuristic forecast from role gaps, draft fit, popularity/meta and available matchup evidence."
+      >
+        <img src={row.hero.portrait} alt="" />
+        <b>{row.hero.localized_name}</b>
+      </div>)}
+      {loading && <i className="enemy-forecast-v27-loading" title="Refreshing forecast" />}
     </div>
-    <div className="primary-pick-copy">
-      <div className="primary-pick-title">
-        <div><span>TOP RECOMMENDATION</span><strong>{hero.localized_name}</strong></div>
+  </div>;
+}
+
+function PrimaryPick({ entry, onPick, enemyCount, refreshing = false }) {
+  const { hero, score } = entry;
+  const evidence = evidenceFor(entry, enemyCount);
+
+  return <article className="pick-card-v27">
+    <div className="pick-card-v27-art">
+      <img src={hero.portrait} alt="" />
+    </div>
+    <div className="pick-card-v27-body">
+      <div className="pick-card-v27-title">
+        <strong>{hero.localized_name}</strong>
         <b>{score.draftFit.toFixed(1)}</b>
       </div>
-      {!beginnerMode && <p>{reasonFor(entry, mode)}{personal?.games ? ` · you: ${personal.games} games` : ' · low personal experience'}</p>}
-      <div className={`simple-pick-summary ${beginnerMode ? 'minimal-summary' : 'advanced-summary'}`}>
-        <span><small>COUNTER</small><b className={score.enemyScore >= 0 ? 'positive' : 'negative'}>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b></span>
-        {!beginnerMode && <span><small>SYNERGY</small><b className={score.synergyScore >= 0 ? 'positive' : 'negative'}>{score.synergyScore > 0 ? '+' : ''}{score.synergyScore.toFixed(1)}</b></span>}
-        {!beginnerMode && <span><small>META</small><b>{score.metaScore.toFixed(1)}</b></span>}
-        <span><small>CONFIDENCE</small><b>{evidence.label}</b></span>
-        {!beginnerMode && <span><small>COVERAGE</small><b>{evidence.verified.length}/{Math.max(enemyCount, 0)}</b></span>}
+      <div className="pick-card-v27-chips">
+        <span className={score.enemyScore >= 0 ? 'positive' : 'negative'}>VS {score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</span>
+        <span>{evidence.label} CONF</span>
       </div>
-      <button disabled={refreshing} onClick={() => onPick(hero, 'self')}>{refreshing ? 'REFRESHING…' : beginnerMode ? 'PICK HERO' : `LOCK PICK${draftComplete ? ' · GAME PLAN READY' : ''}`} {!refreshing && <span>→</span>}</button>
+      <button disabled={refreshing} onClick={() => onPick(hero, 'self')}>
+        {refreshing ? 'UPDATING…' : 'PICK'}
+      </button>
     </div>
   </article>;
 }
 
-function AdvisorSignals({ entry, enemyCount, patch }) {
-  if (!entry) return null;
-  const { score, personal, pairs = [] } = entry;
-  const evidence = evidenceFor(entry, enemyCount);
-  const verifiedPairs = evidence.verified;
-  const signals = [
-    ['ENEMY FIT', Math.max(0, Math.min(10, 5 + score.enemyScore / 2)), score.enemyScore >= 0 ? `+${score.enemyScore.toFixed(1)} counter edge` : `${score.enemyScore.toFixed(1)} counter pressure`],
-    ['SYNERGY', Math.max(0, Math.min(10, 5 + score.synergyScore / 2)), score.synergySource === 'empirical'
-      ? `${score.synergyScore >= 0 ? '+' : ''}${score.synergyScore.toFixed(1)} empirical ally fit · ${Number(score.synergyGames || 0).toLocaleString()} samples`
-      : `${score.synergyScore >= 0 ? '+' : ''}${score.synergyScore.toFixed(1)} modeled ally fit · awaiting empirical pair data`],
-    ['META', score.metaScore, score.metaGames
-      ? `${score.metaProvider || 'STRATZ'} ${score.metaPosition ? score.metaPosition.replace('POSITION_', 'Pos ') : 'role'} · ${Number(score.metaGames).toLocaleString()} matches · patch ${patch?.id || 'current'}`
-      : `${score.metaProvider || 'public'} overall baseline · patch ${patch?.id || 'current'}`],
-  ];
-  return <div className="advisor-signal-rail">
-    <div className="advisor-signal-title">
-      <span>WHY #1</span>
-      <small>{personal?.games ? `${personal.games} personal games · experience shown, not required` : 'low experience · coach still shows the objective pick'}</small>
-    </div>
-    <div className="advisor-signal-bars">{signals.map(([label,value,note]) => <div key={label}><span><b>{label}</b><small>{note}</small></span><i><em style={{width:`${Math.max(3,Math.min(100,Number(value||0)*10))}%`}} /></i><strong>{Number(value||0).toFixed(1)}</strong></div>)}</div>
-    {verifiedPairs.length > 0 && <div className="advisor-matchup-strip">
-      <div>
-        <b>ENEMY DRAFT EVIDENCE</b>
-        <small>{evidence.label.toLowerCase()} confidence · {verifiedPairs.length}/{Math.max(enemyCount, 1)} covered · {evidence.games.toLocaleString()} pair samples</small>
-      </div>
-      <div className="advisor-matchup-chips">{verifiedPairs.slice(0,5).map(row => <span key={row.hero.id} title={`${row.hero.localized_name} · ${row.games.toLocaleString()} samples · ${row.provider || 'public provider'}`}>
-        <img src={row.hero.portrait} alt=""/>
-        <i>{row.hero.localized_name}</i>
-        <strong className={row.score >= 0 ? 'positive' : 'negative'}>{row.score > 0 ? '+' : ''}{row.score.toFixed(1)}</strong>
-      </span>)}</div>
-    </div>}
-    {enemyCount > 0 && verifiedPairs.length < enemyCount && <div className="evidence-gap-note">
-      <b>PARTIAL EVIDENCE</b>
-      <span>{enemyCount - verifiedPairs.length} entered enem{enemyCount - verifiedPairs.length === 1 ? 'y is' : 'ies are'} missing verified pair data. DotaSage keeps ranking, but confidence is reduced instead of inventing a matchup.</span>
-    </div>}
-    {(personal?.games || 0) < 8 && <div className="execution-risk"><b>COACH NOTE</b><span>#1 is the objective draft pick, but your personal sample is low. Treat it as a strong learning pick, not a promise that execution will be easy.</span></div>}
-  </div>;
+function AlternatePick({ entry, onPick, refreshing = false }) {
+  const { hero, score } = entry;
+  return <button disabled={refreshing} className="alt-pick-v27" onClick={() => onPick(hero, 'self')}>
+    <img src={hero.portrait} alt="" />
+    <span>{hero.localized_name}</span>
+    <b className={score.enemyScore >= 0 ? 'positive' : 'negative'}>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b>
+  </button>;
 }
 
-function CompactPick({ entry, rank, onPick, refreshing = false }) {
-  const { hero, score } = entry;
-  return <button disabled={refreshing} className="compact-pick consolidated-compact-pick" onClick={() => onPick(hero, 'self')}>
-    <span className="compact-rank">{rank}</span>
-    <img src={hero.portrait} alt="" />
-    <span className="compact-name"><strong>{hero.localized_name}</strong></span>
-    <span className="compact-metric"><small>VS</small><b className={score.enemyScore >= 0 ? 'positive' : 'negative'}>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b></span>
-    <span className="compact-arrow">→</span>
-  </button>;
+function AdvancedDetails({ entry, enemyCount, advisorMode, setAdvisorMode }) {
+  if (!entry) return null;
+  const { score } = entry;
+  const evidence = evidenceFor(entry, enemyCount);
+
+  return <details className="advisor-details-v27">
+    <summary>DETAILS <span>⌄</span></summary>
+    <div className="advisor-details-v27-body">
+      <label>
+        <span>RANKING</span>
+        <select value={advisorMode} onChange={event => setAdvisorMode(event.target.value)}>
+          {advisorModes.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+        </select>
+      </label>
+      <div className="advisor-details-v27-metrics">
+        <span><small>COUNTER</small><b>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b></span>
+        <span><small>SYNERGY</small><b>{score.synergyScore > 0 ? '+' : ''}{score.synergyScore.toFixed(1)}</b></span>
+        <span><small>META</small><b>{score.metaScore.toFixed(1)}</b></span>
+        <span><small>FUTURE</small><b>{score.futureCounterEvidence ? `${score.futureCounterScore > 0 ? '+' : ''}${score.futureCounterScore.toFixed(1)}` : '—'}</b></span>
+        <span><small>EVIDENCE</small><b>{evidence.verified.length}/{Math.max(enemyCount, 0)}</b></span>
+      </div>
+    </div>
+  </details>;
 }
 
 export default function RecommendationPanel({
   beginnerMode = true,
   recommendations,
+  enemyForecast = [],
+  forecastLoading = false,
   onPick,
-  laneLabel,
   laneFilter,
   setLaneFilter,
   matrixLoading,
   advisorMode,
   setAdvisorMode,
-  draftComplete = false,
-  allyCount = 0,
   enemyCount = 0,
-  playerSide = 'radiant',
-  patch,
-  providerStatus,
 }) {
   const top = recommendations[0];
-  const draftContext = enemyCount
-    ? `${enemyCount}/5 enemies · ${allyCount}/5 allies`
-    : `${allyCount}/5 allies · no enemy counters yet`;
-  return <section className={`recommend-panel glass-panel advisor-panel ${matrixLoading ? 'is-refreshing' : ''}`} aria-busy={matrixLoading ? 'true' : 'false'}>
-    <div className="recommend-head advisor-head consolidated-advisor-head">
-      <div>
-        {!beginnerMode && <div className="eyebrow">PICK ADVISOR · {playerSide.toUpperCase()}</div>}
-        <h2>{beginnerMode ? 'Pick' : 'Draft recommendation'}</h2>
+
+  return <section className={`recommend-panel-v27 ${matrixLoading ? 'is-refreshing' : ''}`} aria-busy={matrixLoading ? 'true' : 'false'}>
+    <div className="advisor-bar-v27">
+      <strong>PICK</strong>
+      <div className="role-tabs-v27" aria-label="Choose role">
+        {positions.map(([key, short, title]) => <button
+          key={key}
+          className={laneFilter === key ? 'active' : ''}
+          onClick={() => setLaneFilter(key)}
+          title={title}
+        >{short}</button>)}
       </div>
-      <div className="recommend-selects">
-        <div className="recommend-role-buttons" aria-label="Choose role">
-          {positionOptions.filter(([key]) => !['jungle','roam'].includes(key)).map(([key,label]) => <button key={key} className={laneFilter === key ? 'active' : ''} onClick={() => setLaneFilter(key)}>{label}</button>)}
-        </div>
-        {!beginnerMode && <label><span>FOCUS</span><select value={advisorMode} onChange={event => setAdvisorMode(event.target.value)}>
-          {advisorModes.map(([key,label]) => <option key={key} value={key}>{label}</option>)}
-        </select></label>}
-      </div>
-      {matrixLoading && <div className="simple-ranking-status"><i /> Updating</div>}
+      {matrixLoading && <i className="advisor-refresh-v27" title="Refreshing matchup data" />}
     </div>
+
+    <ForecastStrip forecast={enemyForecast} loading={forecastLoading} />
+
     {top ? <>
-      <div className="advisor-results">
-        <PrimaryPick beginnerMode={beginnerMode} entry={top} onPick={onPick} mode={advisorMode} draftComplete={draftComplete} enemyCount={enemyCount} patch={patch} providerStatus={providerStatus} refreshing={matrixLoading} />
-        <div className="compact-pick-list">{recommendations.slice(1,beginnerMode ? 5 : 7).map((entry,i)=><CompactPick key={entry.hero.id} entry={entry} rank={i+2} onPick={onPick} refreshing={matrixLoading} />)}</div>
+      <PrimaryPick entry={top} onPick={onPick} enemyCount={enemyCount} refreshing={matrixLoading} />
+      <div className="alt-picks-v27">
+        {recommendations.slice(1, 5).map(entry => <AlternatePick
+          key={entry.hero.id}
+          entry={entry}
+          onPick={onPick}
+          refreshing={matrixLoading}
+        />)}
       </div>
-      {!beginnerMode && <details className="recommend-evidence-details"><summary>WHY THIS PICK <span>evidence & matchup detail</span></summary>
-        <AdvisorSignals entry={top} enemyCount={enemyCount} patch={patch} />
-        <div className="recommend-foot v08-recommend-foot">
-          <span><b>BEST PICK</b> counter-first: 82% aggregate counters + 8% worst-matchup risk · 7% ally fit · 3% meta</span>
-          <span><b>CONFIDENCE</b> reflects matchup coverage/sample size; missing enemies lower the score instead of counting as neutral</span>
-        </div>
-      </details>}
-    </> : <div className="empty-state"><strong>No eligible heroes for this position.</strong><span>Try Flex or another role.</span></div>}
+      {!beginnerMode && <AdvancedDetails
+        entry={top}
+        enemyCount={enemyCount}
+        advisorMode={advisorMode}
+        setAdvisorMode={setAdvisorMode}
+      />}
+    </> : <div className="advisor-empty-v27">No hero fits this role yet.</div>}
   </section>;
 }
