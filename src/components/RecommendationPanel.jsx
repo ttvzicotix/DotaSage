@@ -64,10 +64,10 @@ function PrimaryPick({ entry, onPick, enemyCount, refreshing = false }) {
         <strong>{hero.localized_name}</strong>
         <b>{score.draftFit.toFixed(1)}</b>
       </div>
-      <div className="pick-card-v27-chips">
+      {enemyCount > 0 && <div className="pick-card-v27-chips">
         <span className={score.enemyScore >= 0 ? 'positive' : 'negative'}>VS {score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</span>
         <span>{evidence.label} CONF</span>
-      </div>
+      </div>}
       <button disabled={refreshing} onClick={() => onPick(hero, 'self')}>
         {refreshing ? 'UPDATING…' : 'PICK'}
       </button>
@@ -75,12 +75,12 @@ function PrimaryPick({ entry, onPick, enemyCount, refreshing = false }) {
   </article>;
 }
 
-function AlternatePick({ entry, onPick, refreshing = false }) {
+function AlternatePick({ entry, onPick, refreshing = false, enemyCount = 0 }) {
   const { hero, score } = entry;
   return <button disabled={refreshing} className="alt-pick-v27" onClick={() => onPick(hero, 'self')}>
     <img src={hero.portrait} alt="" />
     <span>{hero.localized_name}</span>
-    <b className={score.enemyScore >= 0 ? 'positive' : 'negative'}>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b>
+    {enemyCount > 0 && <b className={score.enemyScore >= 0 ? 'positive' : 'negative'}>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b>}
   </button>;
 }
 
@@ -148,6 +148,7 @@ export default function RecommendationPanel({
           entry={entry}
           onPick={onPick}
           refreshing={matrixLoading}
+          enemyCount={enemyCount}
         />)}
       </div>
       {!beginnerMode && <AdvancedDetails
