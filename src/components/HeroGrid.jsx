@@ -20,20 +20,23 @@ function QuickHero({ hero, state, onAction, onPrefetchEvidence, playerSide, begi
   const used = state && state !== 'available';
   const radiantAction = playerSide === 'radiant' ? 'ally' : 'enemy';
   const direAction = playerSide === 'dire' ? 'ally' : 'enemy';
+
   return <article
-    className={`quick-hero-tile quick-result-card clean-hero-card ${used ? `used ${state}` : ''}`}
+    className={`hero-card-v27 ${used ? `used ${state}` : ''}`}
     onPointerEnter={() => onPrefetchEvidence?.(hero)}
     onFocus={() => onPrefetchEvidence?.(hero)}
   >
-    <div className="quick-result-portrait"><img src={hero.portrait} alt="" /></div>
-    <div className="quick-result-footer">
-      <strong className="quick-result-name">{hero.localized_name}</strong>
+    <div className="hero-card-v27-art">
+      <img src={hero.portrait} alt="" />
+    </div>
+    <div className="hero-card-v27-foot">
+      <strong>{hero.localized_name}</strong>
       {used
-        ? <span className="quick-result-state">{state === 'self' ? 'YOUR PICK' : state.toUpperCase()}</span>
-        : <div className="quick-result-actions">
+        ? <span>{state === 'self' ? 'YOUR PICK' : state.toUpperCase()}</span>
+        : <div className="hero-card-v27-actions">
             <button className="radiant" onClick={() => onAction(hero, radiantAction)} title="Add to Radiant">RADIANT</button>
             <button className="dire" onClick={() => onAction(hero, direAction)} title="Add to Dire">DIRE</button>
-            <button className="pick" onClick={() => onAction(hero, 'self')} title="Set as your pick">★ PICK</button>
+            <button className="pick" onClick={() => onAction(hero, 'self')} title="Set as your hero">PICK</button>
             {!beginnerMode && <button className="ban" onClick={() => onAction(hero, 'ban')} title="Ban hero">BAN</button>}
           </div>}
     </div>
@@ -63,7 +66,7 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
       .sort((a, b) => q
         ? (b.searchScore - a.searchScore || b.recommendationScore - a.recommendationScore || a.hero.localized_name.localeCompare(b.hero.localized_name))
         : (b.recommendationScore - a.recommendationScore || a.hero.localized_name.localeCompare(b.hero.localized_name)));
-    return rows.slice(0, q ? 8 : beginnerMode ? 12 : 16).map(row => row.hero);
+    return rows.slice(0, q ? 8 : beginnerMode ? 8 : 12).map(row => row.hero);
   }, [allHeroes, roleHeroes, laneFilter, beginnerMode, query, stateForHero, scores]);
 
   const scopedRosterHeroes = useMemo(() => {
@@ -136,10 +139,9 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
     </div>
 
     <div className="quick-hero-shelf persistent-hero-gallery">
-      <div className="quick-shelf-label">
-        <span>{query.trim() ? 'SEARCH RESULTS' : `${laneLabels[laneFilter] || 'HEROES'} · QUICK PICKS`}</span>
-        <small>{query.trim() ? 'Select a side or pick.' : ''}</small>
-      </div>
+      {(query.trim() || !beginnerMode) && <div className="quick-shelf-label">
+        <span>{query.trim() ? 'RESULTS' : (laneLabels[laneFilter] || 'HEROES')}</span>
+      </div>}
       <div className="quick-hero-scroll">{quickHeroes.length
         ? quickHeroes.map(hero => <QuickHero key={hero.id} hero={hero} state={stateForHero(hero.id)} onAction={runAction} onPrefetchEvidence={onPrefetchEvidence} playerSide={playerSide} beginnerMode={beginnerMode} />)
         : <div className="quick-no-results">{query.trim() ? 'No hero or alias matches that search.' : 'No available heroes match this role.'}</div>}</div>
