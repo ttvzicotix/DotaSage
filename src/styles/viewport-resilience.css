@@ -2460,3 +2460,54 @@ body {
     grid-template-columns:1fr 1fr!important;
   }
 }
+
+
+/* v0.26 refresh safety + final cleanup */
+.beginner-layout .recommend-role-buttons{
+  display:inline-flex!important;
+  flex-wrap:nowrap!important;
+  gap:0!important;
+  padding:3px;
+  border:1px solid rgba(255,255,255,.055);
+  border-radius:10px;
+  background:rgba(255,255,255,.012);
+}
+.beginner-layout .recommend-role-buttons button{
+  min-height:30px!important;
+  border:0!important;
+  border-radius:7px!important;
+  padding:0 8px!important;
+  background:transparent!important;
+  color:#727d8d!important;
+  box-shadow:none!important;
+}
+.beginner-layout .recommend-role-buttons button.active{
+  color:#eee5ff!important;
+  background:rgba(166,108,255,.14)!important;
+}
+.beginner-layout .recommend-role-buttons button:hover{
+  color:#cfd6e0!important;
+}
+.beginner-layout .recommend-panel.is-refreshing .primary-pick-card,
+.beginner-layout .recommend-panel.is-refreshing .compact-pick-list{
+  opacity:.72;
+  transition:opacity .12s ease;
+}
+.recommend-panel button:disabled{
+  cursor:wait!important;
+  filter:saturate(.72)!important;
+}
+.beginner-layout .primary-pick-copy>button:disabled{
+  color:#a69caf!important;
+  background:rgba(166,108,255,.08)!important;
+}
+.beginner-layout .compact-pick:disabled{
+  opacity:.62!important;
+}
+@media(max-width:900px){
+  .beginner-layout .recommend-role-buttons{
+    display:grid!important;
+    grid-template-columns:repeat(3,1fr)!important;
+    width:100%;
+  }
+}
