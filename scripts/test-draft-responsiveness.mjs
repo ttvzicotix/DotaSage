@@ -11,7 +11,7 @@ assert.equal(
 );
 
 assert.equal(
-  grid.includes('quick-result-footer'),
+  grid.includes('hero-card-v27-foot'),
   true,
   'hero actions should live in a separate footer',
 );
