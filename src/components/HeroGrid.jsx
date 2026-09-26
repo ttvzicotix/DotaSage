@@ -65,7 +65,7 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
       .sort((a, b) => q
         ? (b.searchScore - a.searchScore || b.recommendationScore - a.recommendationScore || a.hero.localized_name.localeCompare(b.hero.localized_name))
         : (b.recommendationScore - a.recommendationScore || a.hero.localized_name.localeCompare(b.hero.localized_name)));
-    return rows.slice(0, q ? 8 : beginnerMode ? 8 : 12).map(row => row.hero);
+    return rows.slice(0, q ? 12 : beginnerMode ? 14 : 16).map(row => row.hero);
   }, [allHeroes, roleHeroes, laneFilter, beginnerMode, query, stateForHero, scores]);
 
   const scopedRosterHeroes = useMemo(() => {
@@ -133,13 +133,11 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
           autoComplete="off"
         />
       </div>
-      <button className="browse-toggle" onClick={() => setExpanded(true)}>ALL HEROES <b>⌄</b></button>
+      <button className="browse-toggle" onClick={() => setExpanded(true)}>HEROES <b>⌄</b></button>
     </div>
 
     <div className="quick-hero-shelf persistent-hero-gallery">
-      {(query.trim() || !beginnerMode) && <div className="quick-shelf-label">
-        <span>{query.trim() ? 'RESULTS' : (laneLabels[laneFilter] || 'HEROES')}</span>
-      </div>}
+      {query.trim() && <div className="quick-shelf-label"><span>RESULTS</span></div>}
       <div className="quick-hero-scroll">{quickHeroes.length
         ? quickHeroes.map(hero => <QuickHero key={hero.id} hero={hero} state={stateForHero(hero.id)} onAction={runAction} onPrefetchEvidence={onPrefetchEvidence} playerSide={playerSide} beginnerMode={beginnerMode} />)
         : <div className="quick-no-results">{query.trim() ? 'No hero or alias matches that search.' : 'No available heroes match this role.'}</div>}</div>
