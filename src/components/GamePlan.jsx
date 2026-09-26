@@ -595,6 +595,7 @@ export default function GamePlan({
   });
   const [matchState, setMatchStateState] = useState(() => { try { return sessionStorage.getItem('dotasage:match-state') || 'even'; } catch { return 'even'; } });
   const [liveClockConnected, setLiveClockConnected] = useState(false);
+  const [advancedTab, setAdvancedTab] = useState('coach');
 
   const setMinute = value => {
     const numeric = Number(value);
@@ -740,59 +741,142 @@ export default function GamePlan({
     </main>;
   }
 
-  return <main className="gpv2 game-plan advanced-gameplan">
-    <div className="gpv2-toolbar"><button onClick={onBack}>← BACK TO DRAFT</button><span>GAME PLAN · PATCH {patch?.id || '—'}</span><button onClick={() => document.getElementById('post-match-review')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>POST-MATCH ↓</button></div>
+  const advancedCalls = [
+    {
+      label: 'LANE',
+      title: laneOpponents.length ? laneOpponents.map(row => row.localized_name).join(' + ') : 'Lane not set',
+      text: laneTone === 'favorable'
+        ? 'Use the matchup edge without giving up your farm pattern.'
+        : laneTone === 'pressured'
+          ? 'Protect HP and lane access first.'
+          : 'Take the efficient trade, then return to the wave.',
+    },
+    {
+      label: 'WATCH',
+      title: threat?.hero?.localized_name || 'Enemy initiation',
+      text: threat ? `Hardest verified matchup (${signed(threat.score)}). Track this hero before committing.` : 'No hard verified threat has loaded yet.',
+    },
+    {
+      label: 'NEXT',
+      title: Number(minute || 0) < 10 ? 'Farm → timing' : Number(minute || 0) < 20 ? 'Tower → map' : Number(minute || 0) < 35 ? 'Roshan / Tormentor / T2' : 'Roshan → buyback → high ground',
+      text: matchState === 'ahead' ? 'Convert the lead into territory.' : matchState === 'behind' ? 'Recover safe waves and vision first.' : 'Get information, then take the clean objective.',
+    },
+  ];
 
-    <section className="gpv2-hero-brief">
-      <img src={hero.portrait} alt="" />
-      <div className="gpv2-hero-copy"><span>YOUR HERO · {playerSide.toUpperCase()}</span><h1>{hero.localized_name}</h1><p>{roleLabel} · {laneTone} into the entered enemy draft</p></div>
-      <div className="gpv2-scores"><ScorePill label="VS ENEMY" value={selectedScore?.enemyScore} signed /><ScorePill label="TEAM FIT" value={selectedScore?.teamFit} /><ScorePill label="PERSONAL" value={selectedScore?.personalFit != null ? selectedScore.personalFit / 10 : null} /><ScorePill label="RECOMMEND" value={selectedScore?.overall} /></div>
+  return <main className="gpv2 game-plan advanced-gameplan advanced-gameplan-v28">
+    <div className="gpv2-toolbar advanced-toolbar-v28">
+      <button onClick={onBack}>← DRAFT</button>
+      <span>GAME PLAN · PATCH {patch?.id || '—'}</span>
+      <details className="advanced-tools-v28">
+        <summary>TOOLS</summary>
+        <div>
+          <button onClick={() => document.getElementById('post-match-review')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>POST-MATCH</button>
+        </div>
+      </details>
+    </div>
+
+    <section className="simple-hero-banner advanced-hero-v28">
+      <div className="simple-hero-image"><img src={hero.portrait} alt="" /></div>
+      <div className="simple-hero-title">
+        <span>{playerSide.toUpperCase()} · {roleLabel}</span>
+        <h1>{hero.localized_name}</h1>
+        <p>{laneTone} into the entered enemy draft</p>
+      </div>
+      <div className="simple-hero-score">
+        <small>VS DRAFT</small>
+        <strong className={Number(selectedScore?.enemyScore || 0) >= 0 ? 'positive' : 'negative'}>{signed(selectedScore?.enemyScore)}</strong>
+        <span>{evidenceLabel} evidence</span>
+      </div>
     </section>
 
-    {!beginnerMode && <section className="gpv2-provenance" aria-label="Game plan data provenance">
-      <div><span>COUNTER SOURCE</span><strong>{matchupSourceLabel}</strong></div>
-      <div><span>EVIDENCE</span><strong className={`evidence-${evidenceLabel.toLowerCase()}`}>{evidenceLabel}</strong><small>{knownPairs.length}/{draft.enemies?.length || 0} enemies covered</small></div>
-      <div><span>PAIR SAMPLE</span><strong>{pairSamples ? pairSamples.toLocaleString() : 'building'}</strong></div>
-      <div><span>PATCH</span><strong>{patch?.id || '—'}</strong></div>
-      <div><span>CLOCK</span><strong>{onlineClockConnected ? 'ONLINE LIVE' : liveClockConnected ? 'LOCAL LIVE' : 'MANUAL READY'}</strong></div>
-    </section>}
-
-    {!beginnerMode && <section className="gpv2-lineups">
-      {[['RADIANT', radiant, ratingMap('radiant')], ['DIRE', dire, ratingMap('dire')]].map(([label, heroes, ratings]) => <div key={label}><span>{label} · {label.toLowerCase() === playerSide ? 'YOUR TEAM' : 'ENEMY'}</span><div>{heroes.map(row => <article className={row.id === hero.id ? 'self' : ''} key={row.id}><img src={row.portrait} alt="" /><small>{row.localized_name}</small><b>{signed(ratings?.get(row.id) ?? 0)}</b></article>)}</div></div>)}
-    </section>}
-
     <MatchContext minute={minute} state={matchState} onMinute={setMinute} onState={setMatchState} liveClock={liveClockConnected || onlineClockConnected} />
-    {!beginnerMode && <LiveBar itemConstants={itemConstants} onMinute={setMinute} onConnectionChange={setLiveClockConnected} onlineLiveMatch={onlineLiveMatch} />}
 
-    <div className="gpv2-command">
-      <div className="gpv2-command-main">
-        <section className="gpv2-card gpv2-briefing">
-          <div className="gpv2-card-head"><div><span>THIS GAME IN 30 SECONDS</span><strong>The high-signal version of the old wall of cards</strong></div></div>
-          <div className="gpv2-brief-grid">
-            <div><span>LANE / EARLY</span><strong>{laneOpponents.length ? `${selfLane?.toUpperCase()} vs ${laneOpponents.map(row => row.localized_name).join(' + ')}` : roleLabel}</strong><p>{hero.localized_name} is {laneTone} by the loaded direct-matchup evidence. Protect the next wave before forcing a rotation.</p></div>
-            <div className="win"><span>WIN CONDITION</span><strong>Fight clean, then convert</strong><p>{winCondition}</p></div>
-          </div>
-          <div className="gpv2-coach-list">{coach.map((text, index) => <div key={index}><b>{String(index + 1).padStart(2, '0')}</b><p>{text}</p></div>)}</div>
-        </section>
-        {!beginnerMode && <LaneBoard map={laneMap} selfId={hero.id} overrides={laneOverrides} onMove={moveLane} />}
+    <nav className="advanced-tabs-v28" aria-label="Game Plan sections">
+      {[
+        ['coach', 'COACH'],
+        ['build', 'BUILD'],
+        ['map', 'MAP'],
+        ['matchups', 'MATCHUPS'],
+      ].map(([key, label]) => <button key={key} className={advancedTab === key ? 'active' : ''} onClick={() => setAdvancedTab(key)}>{label}</button>)}
+    </nav>
+
+    {advancedTab === 'coach' && <section className="advanced-workspace-v28 coach-workspace-v28">
+      <div className="simple-call-grid">
+        {advancedCalls.map(call => <article key={call.label}>
+          <span>{call.label}</span>
+          <strong>{call.title}</strong>
+          <p>{call.text}</p>
+        </article>)}
       </div>
 
-      <aside className="gpv2-intel-rail">
+      <div className="coach-signal-grid-v28">
+        <ThreatList title="Watch first" rows={threats.slice(0, 2)} loading={pairLoading} error={pairError && !knownPairs.length} />
+        <ThreatList title="Pressure first" rows={opportunities.slice(0, 2)} loading={pairLoading} error={false} positive />
+        <section className="coach-next-v28">
+          <span>FIGHT</span>
+          <strong>{opener?.localized_name || hero.localized_name} → {layer?.localized_name || hero.localized_name} → {hero.localized_name}</strong>
+          <small>Convert with {converter?.localized_name || hero.localized_name}.</small>
+        </section>
+      </div>
+
+      <details className="advanced-live-v28">
+        <summary>LIVE SYNC <span>optional</span><b>⌄</b></summary>
+        <LiveBar itemConstants={itemConstants} onMinute={setMinute} onConnectionChange={setLiveClockConnected} onlineLiveMatch={onlineLiveMatch} />
+      </details>
+    </section>}
+
+    {advancedTab === 'build' && <section className="advanced-workspace-v28 build-workspace-v28">
+      <div className="simple-build-layout">
+        <SkillBuild hero={hero} />
+        <SimpleItemPlan
+          phases={phases}
+          conditionals={conditionals}
+          items={allItems}
+          observedCounts={observedCounts}
+          onObservedChange={changeObserved}
+          loading={itemLoading}
+        />
+      </div>
+      <details className="advanced-deep-v28">
+        <summary>DETAILED ITEM DATA <span>popular purchases, recipes & inventory shapes</span><b>⌄</b></summary>
+        <ItemLab phases={phases} targets={targets} paths={paths} conditionals={conditionals} impacts={impacts} loading={itemLoading} />
+      </details>
+    </section>}
+
+    {advancedTab === 'map' && <section className="advanced-workspace-v28 map-workspace-v28">
+      <LaneBoard map={laneMap} selfId={hero.id} overrides={laneOverrides} onMove={moveLane} />
+      <div className="map-side-v28">
+        <section className="map-call-v28">
+          <span>VISION</span>
+          <strong>{visionCall(minute, matchState)}</strong>
+        </section>
+        <section className="map-call-v28">
+          <span>NEXT MOVE</span>
+          <strong>{objectiveCall(minute, matchState, converter)}</strong>
+        </section>
+        <section className="map-call-v28 compact-timeline-v28">
+          <span>ROLE TIMING</span>
+          <div>{checkpoints.map(([time, text]) => <p key={time}><b>{time}</b>{text}</p>)}</div>
+        </section>
+      </div>
+    </section>}
+
+    {advancedTab === 'matchups' && <section className="advanced-workspace-v28 matchups-workspace-v28">
+      <div className="matchup-summary-v28">
         <ThreatList title="Biggest threats" rows={threats} loading={pairLoading} error={pairError && !knownPairs.length} />
         <ThreatList title="Best matchups" rows={opportunities} loading={pairLoading} error={false} positive />
-        {!beginnerMode && <section className="gpv2-side-card gpv2-checkpoints"><div className="gpv2-side-title"><span>ROLE TIMELINE</span><strong>Checkpoints</strong></div>{checkpoints.map(([time, text]) => <div key={time}><b>{time}</b><p>{text}</p></div>)}</section>}
-        {!beginnerMode && <section className="gpv2-side-card gpv2-fight"><div className="gpv2-side-title"><span>FIGHT SEQUENCE</span><strong>How your five wants to enter</strong></div>{[['OPEN', opener], ['LAYER', layer], ['YOUR ENTRY', hero], ['CONVERT', converter]].map(([label, row], index) => <div key={`${label}-${index}`}><b>{index + 1}</b><span><small>{label}</small><strong>{row?.localized_name || 'Team'}</strong></span></div>)}</section>}
-      </aside>
-    </div>
+      </div>
+      <details className="provenance-v28">
+        <summary>DATA <span>{matchupSourceLabel} · {pairSamples ? pairSamples.toLocaleString() : 'building'} pair samples</span><b>⌄</b></summary>
+        <div>
+          <span><b>{evidenceLabel}</b> evidence</span>
+          <span>{knownPairs.length}/{draft.enemies?.length || 0} enemies covered</span>
+          <span>Patch {patch?.id || '—'}</span>
+        </div>
+      </details>
+      <MatchupAtlas hero={hero} allies={draft.allies || []} enemies={draft.enemies || []} patch={patch} />
+    </section>}
 
-    <div className="gpv2-map-info">
-      {!beginnerMode && <section className="gpv2-card"><span>VISION</span><strong>Where the next information should come from</strong><p>{visionCall(minute, matchState)}</p></section>}
-      <section className="gpv2-card"><span>NEXT MOVE</span><strong>{objectiveCall(minute, matchState, converter)}</strong>{!beginnerMode && <p>Turn the next won fight into something permanent instead of extending the chase.</p>}</section>
-    </div>
-
-    {!beginnerMode && <MatchupAtlas hero={hero} allies={draft.allies || []} enemies={draft.enemies || []} patch={patch} />}
-    {!beginnerMode && <ObservedItems items={allItems} counts={observedCounts} onChange={changeObserved} />}
-    {!beginnerMode && <ItemLab phases={phases} targets={targets} paths={paths} conditionals={conditionals} impacts={impacts} loading={itemLoading} />}
-    {!beginnerMode && <CompactPostMatch hero={hero} />}
+    <CompactPostMatch hero={hero} />
   </main>;
 }

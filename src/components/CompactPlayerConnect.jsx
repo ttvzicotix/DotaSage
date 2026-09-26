@@ -1,7 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { normalizeDotaAccountId } from '../utils/dotaAccountId';
+import { loadPlayerSnapshot } from '../services/playerStorage';
 
-export default function CompactPlayerConnect({ accountId }) {
+const MEDALS = ['', 'Herald', 'Guardian', 'Crusader', 'Archon', 'Legend', 'Ancient', 'Divine', 'Immortal'];
+
+function rankLabel(rankTier) {
+  const rank = Number(rankTier || 0);
+  if (!rank) return 'Uncalibrated';
+  const medal = Math.floor(rank / 10);
+  const star = rank % 10;
+  if (medal >= 8) return 'Immortal';
+  return `${MEDALS[medal] || 'Rank'}${star ? ` ${star}` : ''}`;
+}
+
+export default function CompactPlayerConnect({ accountId, player, loading = false, onOpenProfile }) {
   const [editing, setEditing] = useState(!accountId);
   const [value, setValue] = useState(accountId || '');
   const [error, setError] = useState('');
@@ -11,6 +23,12 @@ export default function CompactPlayerConnect({ accountId }) {
     setEditing(!accountId);
     setError('');
   }, [accountId]);
+
+  const snapshot = useMemo(() => accountId ? loadPlayerSnapshot(accountId) : null, [accountId, player]);
+  const avatar = player?.profile?.avatarfull || player?.profile?.avatarmedium || snapshot?.avatar || null;
+  const name = player?.profile?.personaname || snapshot?.name || (accountId ? 'Dota player' : '');
+  const rank = rankLabel(player?.rank_tier ?? snapshot?.rankTier);
+  const provider = player?._provider || (snapshot ? 'saved' : null);
 
   function save(event) {
     event?.preventDefault?.();
@@ -29,18 +47,25 @@ export default function CompactPlayerConnect({ accountId }) {
   }
 
   if (!editing && accountId) {
-    return <section className="compact-player-connect connected">
-      <div>
-        <span>PLAYER</span>
-        <strong>{accountId}</strong>
-      </div>
-      <button onClick={() => setEditing(true)}>CHANGE</button>
+    return <section className="compact-player-connect identity-v28">
+      <button className="identity-v28-main" onClick={onOpenProfile} title="Open player profile">
+        <div className="identity-v28-avatar">
+          {avatar ? <img src={avatar} alt="" /> : <span>{String(name || 'P').slice(0, 1).toUpperCase()}</span>}
+        </div>
+        <div className="identity-v28-copy">
+          <strong>{loading && !snapshot && !player ? 'Loading player…' : name}</strong>
+          <span>{rank}{provider ? ` · ${String(provider).toUpperCase()}` : ''}</span>
+          <small>ID {accountId}</small>
+        </div>
+        <b>›</b>
+      </button>
+      <button className="identity-v28-change" onClick={() => setEditing(true)}>CHANGE</button>
     </section>;
   }
 
-  return <section className="compact-player-connect">
+  return <section className="compact-player-connect connect-v28">
     <form onSubmit={save}>
-      <label htmlFor="compact-player-id">PLAYER ID</label>
+      <label htmlFor="compact-player-id">PLAYER</label>
       <input
         id="compact-player-id"
         value={value}

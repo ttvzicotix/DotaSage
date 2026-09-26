@@ -4,7 +4,6 @@ import { DEFAULT_PROFILE } from './data/defaultProfile';
 import { fetchHeroes, fetchHeroMatchups, fetchHeroStats, fetchPlayer, fetchPlayerHeroes, fetchPlayerWinLoss, fetchRecentMatches, fetchPlayerMatchHistory, fetchHeroDurations, fetchHeroItemPopularity, fetchHeroEvidence, fetchItems, portraitUrl } from './services/openDota';
 import { buildPersonalScores } from './engine/playerModel';
 import { aggregateEnemyScore, aggregateSynergyScore, compositionFit, compositionSynergyScore, draftFitScore, heroBaseWinRate, overallRecommendation, pairCounterScore, pairSynergyScore } from './engine/scoring';
-import PlayerProfile from './components/PlayerProfile';
 import CompactPlayerConnect from './components/CompactPlayerConnect';
 import DraftBoard from './components/DraftBoard';
 import HeroGrid from './components/HeroGrid';
@@ -972,28 +971,19 @@ export default function App() {
 
       <div className={`command-layout consolidated-layout ${beginnerMode ? 'beginner-layout' : 'advanced-layout'}`}>
         <aside className="left-rail">
-          <CompactPlayerConnect accountId={DEFAULT_PROFILE.accountId} />
+          <CompactPlayerConnect accountId={DEFAULT_PROFILE.accountId} player={player} loading={profileLoading} onOpenProfile={() => setProfileOpen(true)} />
           <DraftBoard beginnerMode={beginnerMode} draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; lastLocalDraftSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} onCopyLink={copyDraftLink} copyStatus={copyDraftStatus} playerSide={playerSide} onSideChange={changePlayerSide} onSwapTeams={swapTeams} onlineLiveEnabled={onlineLiveEnabled} onlineLiveStatus={onlineLiveStatus} onToggleOnlineLive={toggleOnlineLive} liveDraftEnabled={localDraftEnabled} liveDraftStatus={localDraftStatus} onToggleLiveDraft={toggleLocalDraftSync} />
+          {!beginnerMode && <details className="rail-intel-v28">
+            <summary><span>DRAFT INTEL</span><b>⌄</b></summary>
+            <DraftInsights draft={draft} matrixLoading={matrixLoading} durationData={durationData} durationLoading={durationLoading} />
+          </details>}
         </aside>
 
         <main className="center-stage">
           <HeroGrid beginnerMode={beginnerMode} allHeroes={heroes} roleHeroes={roleEligibleHeroes} heroes={filteredHeroes} scores={scoreBundle.scores} stateForHero={stateForHero} onAction={actOnHero} onPrefetchEvidence={prefetchCounterEvidence} query={query} setQuery={setQuery} attr={attr} setAttr={setAttr} loadingLive={matrixLoading || rosterLoading} laneFilter={laneFilter} setLaneFilter={setLaneFilter} playerSide={playerSide} />
           <RecommendationPanel beginnerMode={beginnerMode} recommendations={recommendations} enemyForecast={enemyForecast} forecastLoading={forecastLoading} onPick={actOnHero} draftComplete={draftComplete} allyCount={draft.allies.length} enemyCount={draft.enemies.length} laneLabel={laneLabels[laneFilter]} laneFilter={laneFilter} setLaneFilter={setLaneFilter} matrixLoading={matrixLoading} advisorMode={advisorMode} setAdvisorMode={setAdvisorMode} playerSide={playerSide} patch={patch} providerStatus={providerStatus} />
 
-          {!beginnerMode && <section className="advanced-sections">
-            <details>
-              <summary><span>PLAYER PROFILE</span><small>history, comfort pool and public stats</small><b>⌄</b></summary>
-              <div className="advanced-section-body">
-                <PlayerProfile profile={DEFAULT_PROFILE} player={player} loading={profileLoading} personalSummary={personalSummary} winLoss={winLoss} recentSummary={recent} onOpenProfile={() => setProfileOpen(true)} />
-              </div>
-            </details>
-            <details>
-              <summary><span>DRAFT ANALYTICS</span><small>team shape and timing profile</small><b>⌄</b></summary>
-              <div className="advanced-section-body">
-                <DraftInsights draft={draft} matrixLoading={matrixLoading} durationData={durationData} durationLoading={durationLoading} />
-              </div>
-            </details>
-          </section>}
+
         </main>
       </div>
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} profile={DEFAULT_PROFILE} player={player} winLoss={winLoss} recentMatches={recentMatches} allMatches={allMatches} historyLoading={historyLoading} historyError={historyError} playerHeroRows={playerHeroRows} heroes={heroes} recentSummary={recent} />
