@@ -3888,3 +3888,23 @@ body {
   .advisor-controls-v27{display:grid;gap:6px}
   .alt-picks-v27{grid-template-columns:1fr!important}
 }
+
+
+/* Expanded item-plan density ------------------------------------------- */
+.simple-core-item{
+  flex-basis:78px!important;
+  min-width:78px!important;
+}
+.simple-core-item img{
+  width:50px!important;
+  height:36px!important;
+}
+.simple-item-branches article{
+  grid-template-columns:minmax(82px,.72fr) 12px 42px minmax(0,1fr)!important;
+  min-height:56px!important;
+  padding:6px!important;
+}
+.simple-item-branches article>img{
+  width:42px!important;
+  height:30px!important;
+}
