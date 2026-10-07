@@ -192,10 +192,45 @@ function countEnemyRole(enemies, role) {
   return enemies.filter(hero => hasRole(hero, role)).length;
 }
 
-function conditionalItems(hero, enemies, items, observedCounts) {
+function topTrendItemIds(popularity, limit = 8) {
+  if (!popularity) return new Set();
+  const groups = [popularity.early_game_items, popularity.mid_game_items, popularity.late_game_items];
+  const rows = groups.flatMap(group => Object.entries(group || {}).map(([id, uses]) => [Number(id), Number(uses || 0)]));
+  rows.sort((a, b) => b[1] - a[1]);
+  return new Set(rows.slice(0, limit).map(([id]) => id));
+}
+
+function enemyTrendCount(enemyItemPopularity, items, names = []) {
+  const target = findItem(items, names);
+  if (!target) return 0;
+  let count = 0;
+  for (const popularity of enemyItemPopularity?.values?.() || []) {
+    if (topTrendItemIds(popularity, 10).has(Number(target.id))) count += 1;
+  }
+  return count;
+}
+
+function enemyThreats(enemies = []) {
+  const names = new Set(enemies.map(hero => hero.localized_name));
+  const hasAny = list => list.some(name => names.has(name));
+  return {
+    silence: hasAny(['Silencer', 'Death Prophet', 'Drow Ranger', 'Night Stalker', 'Puck', 'Skywrath Mage', 'Disruptor', 'Grimstroke']),
+    targetedBurst: hasAny(['Legion Commander', 'Doom', 'Bane', 'Beastmaster', 'Lion', 'Lina', 'Necrophos', 'Nyx Assassin', 'Shadow Shaman']),
+    evasion: hasAny(['Phantom Assassin', 'Windranger', 'Brewmaster']),
+    illusions: hasAny(['Phantom Lancer', 'Naga Siren', 'Terrorblade', 'Chaos Knight', 'Meepo']),
+    sustain: hasAny(['Huskar', 'Alchemist', 'Morphling', 'Necrophos', 'Death Prophet', 'Timbersaw', 'Bristleback']),
+    magicBurst: hasAny(['Zeus', 'Lina', 'Leshrac', 'Skywrath Mage', 'Invoker', 'Pugna', 'Lion', 'Storm Spirit']),
+    summons: hasAny(['Chen', 'Enchantress', 'Beastmaster', 'Lycan', 'Broodmother', 'Nature\'s Prophet', 'Visage']),
+    invis: hasAny(['Riki', 'Bounty Hunter', 'Clinkz', 'Nyx Assassin', 'Mirana', 'Weaver']),
+  };
+}
+
+function conditionalItems(hero, enemies, items, observedCounts, enemyItemPopularity = new Map()) {
   const rows = [];
   const core = hasRole(hero, 'Carry') || hasRole(hero, 'Nuker');
   const support = hasRole(hero, 'Support');
+  const threats = enemyThreats(enemies);
+  const likely = (...names) => enemyTrendCount(enemyItemPopularity, items, names);
   const observed = name => {
     const item = findItem(items, [name]);
     return item ? Number(observedCounts[item.id] || 0) : 0;
@@ -207,13 +242,20 @@ function conditionalItems(hero, enemies, items, observedCounts) {
     rows.push({ item, title, reason, priority });
   };
 
-  add(observed('Butterfly') > 0 && core, ['Monkey King Bar'], 'ACCURACY NOW MATTERS', 'An observed Butterfly makes MKB a concrete response.', true);
+  add((observed('Butterfly') > 0 || likely('Butterfly') > 0 || threats.evasion) && core, ['Monkey King Bar'], 'ACCURACY NOW MATTERS', observed('Butterfly') > 0 ? 'An observed Butterfly makes MKB a concrete response.' : 'Enemy picks or common purchases create a real evasion risk.', observed('Butterfly') > 0);
+  add((observed('Black King Bar') > 0 || likely('Black King Bar') >= 2) && support, ['Force Staff', 'Ghost Scepter', 'Glimmer Cape'], 'BKB WINDOWS WILL MATTER', 'Multiple enemy cores commonly buy spell immunity; prioritize surviving or repositioning through their commitment instead of feeding into the BKB window.');
+  add((likely("Linken's Sphere") > 0 || threats.targetedBurst) && core, ['Black King Bar', "Linken's Sphere"], 'PROTECT THE KEY CAST WINDOW', 'Targeted disables or burst make spell protection more valuable than a generic damage slot.');
+  add((likely('Orchid Malevolence') > 0 || likely('Bloodthorn') > 0 || threats.silence) && !support, ['Black King Bar', 'Manta Style'], 'SILENCE CAN SHUT YOU DOWN', 'Enemy abilities or common silence purchases threaten your ability to cast or escape.');
+  add((likely('Pipe of Insight') > 0 || threats.magicBurst) && support, ['Pipe of Insight', 'Glimmer Cape'], 'MAGIC BURST IS THE FIGHT', 'Enemy spell damage profile makes team or single-target magic mitigation high value.');
+  add((likely('Heart of Tarrasque') > 0 || likely('Satanic') > 0 || threats.sustain), support ? ['Spirit Vessel'] : ['Eye of Skadi', 'Spirit Vessel'], 'CUT THEIR SUSTAIN', 'Enemy heroes or common purchases rely on healing, regen, or lifesteal.');
+  add((likely('Manta Style') > 0 || threats.illusions || threats.summons), core ? ['Mjollnir', 'Maelstrom', 'Battle Fury'] : ["Shiva's Guard"], 'CLEAR EXTRA UNITS', 'Enemy illusions, summons, or common Manta purchases reward repeatable area damage.');
+  add(threats.invis && support, ['Dust of Appearance', 'Sentry Ward', 'Gem of True Sight'], 'REVEAL IS MANDATORY', 'Enemy heroes can rely on invisibility; reserve detection instead of treating it as an optional slot.');
   add(observed('Ghost Scepter') + observed("Eul's Scepter of Divinity") + observed('Glimmer Cape') > 0 && core, ['Nullifier'], 'SAVES ARE BLOCKING KILLS', 'Enemy defensive items are already resetting physical kill attempts.', true);
   add(observed('Satanic') + observed('Heart of Tarrasque') > 0, support ? ['Spirit Vessel'] : ['Eye of Skadi', 'Spirit Vessel'], 'SUSTAIN IS SHOWING', 'Observed sustain makes anti-heal more valuable.', true);
   add(countEnemyRole(enemies, 'Disabler') >= 2 || countEnemyRole(enemies, 'Nuker') >= 3, core ? ['Black King Bar'] : ['Force Staff', 'Glimmer Cape'], 'IF CONTROL STOPS YOUR JOB', core ? 'Protect the damage window.' : 'Create space for yourself or a core.');
   add(countEnemyRole(enemies, 'Initiator') >= 2, support ? ['Force Staff'] : ["Linken's Sphere", 'Black King Bar'], 'IF YOU KEEP GETTING JUMPED', 'Survive or redirect the first enemy commitment.');
   add(countEnemyRole(enemies, 'Carry') >= 2, support ? ['Ghost Scepter', "Heaven's Halberd"] : ['Butterfly', "Shiva's Guard"], 'IF PHYSICAL DAMAGE TAKES OVER', 'Shift a slot toward surviving right-click commitment.');
-  add(enemies.some(enemy => ['Phantom Lancer', 'Naga Siren', 'Terrorblade', 'Chaos Knight', 'Meepo'].includes(enemy.localized_name)), core ? ['Mjollnir', 'Maelstrom', 'Battle Fury'] : ["Shiva's Guard"], 'IF ILLUSIONS TAKE OVER', 'Add repeatable area damage or control.');
+  add(threats.illusions, core ? ['Mjollnir', 'Maelstrom', 'Battle Fury'] : ["Shiva's Guard"], 'IF ILLUSIONS TAKE OVER', 'Add repeatable area damage or control.');
   return rows.sort((a, b) => Number(b.priority) - Number(a.priority)).slice(0, 6);
 }
 
@@ -581,6 +623,7 @@ export default function GamePlan({
   onBack,
   positionLabel,
   itemPopularity,
+  enemyItemPopularity = new Map(),
   itemConstants,
   itemLoading,
 }) {
@@ -633,7 +676,7 @@ export default function GamePlan({
   const deepPhases = useMemo(() => buildItemPhases(itemPopularity, itemConstants, 36), [itemPopularity, itemConstants]);
   const paths = useMemo(() => buildUpgradePaths(deepPhases, lookup), [deepPhases, lookup]);
   const targets = useMemo(() => inventoryTargets(deepPhases, lookup), [deepPhases, lookup]);
-  const conditionals = useMemo(() => hero ? conditionalItems(hero, draft.enemies || [], allItems, observedCounts) : [], [hero, draft.enemies, allItems, observedCounts]);
+  const conditionals = useMemo(() => hero ? conditionalItems(hero, draft.enemies || [], allItems, observedCounts, enemyItemPopularity) : [], [hero, draft.enemies, allItems, observedCounts, enemyItemPopularity]);
   const impacts = useMemo(() => observedImpact(observedCounts, allItems), [observedCounts, allItems]);
 
   if (!hero) return null;

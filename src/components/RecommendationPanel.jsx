@@ -84,7 +84,7 @@ function AlternatePick({ entry, onPick, refreshing = false, enemyCount = 0 }) {
   </button>;
 }
 
-function AdvancedDetails({ entry, enemyCount, advisorMode, setAdvisorMode }) {
+function AdvancedDetails({ entry, enemyCount }) {
   if (!entry) return null;
   const { score } = entry;
   const evidence = evidenceFor(entry, enemyCount);
@@ -92,12 +92,6 @@ function AdvancedDetails({ entry, enemyCount, advisorMode, setAdvisorMode }) {
   return <details className="advisor-details-v27">
     <summary>DETAILS <span>⌄</span></summary>
     <div className="advisor-details-v27-body">
-      <label>
-        <span>RANKING</span>
-        <select value={advisorMode} onChange={event => setAdvisorMode(event.target.value)}>
-          {advisorModes.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-        </select>
-      </label>
       <div className="advisor-details-v27-metrics">
         <span><small>COUNTER</small><b>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b></span>
         <span><small>SYNERGY</small><b>{score.synergyScore > 0 ? '+' : ''}{score.synergyScore.toFixed(1)}</b></span>
@@ -127,13 +121,23 @@ export default function RecommendationPanel({
   return <section className={`recommend-panel-v27 ${matrixLoading ? 'is-refreshing' : ''}`} aria-busy={matrixLoading ? 'true' : 'false'}>
     <div className="advisor-bar-v27">
       <strong>PICK</strong>
-      <div className="role-tabs-v27" aria-label="Choose role">
-        {positions.map(([key, short, title]) => <button
-          key={key}
-          className={laneFilter === key ? 'active' : ''}
-          onClick={() => setLaneFilter(key)}
-          title={title}
-        >{short}</button>)}
+      <div className="advisor-controls-v27">
+        <div className="role-tabs-v27" aria-label="Choose role">
+          {positions.map(([key, short, title]) => <button
+            key={key}
+            className={laneFilter === key ? 'active' : ''}
+            onClick={() => setLaneFilter(key)}
+            title={title}
+          >{short}</button>)}
+        </div>
+        <div className="advisor-mode-tabs-v27" aria-label="Choose recommendation strategy">
+          {advisorModes.map(([key, label]) => <button
+            key={key}
+            className={advisorMode === key ? 'active' : ''}
+            onClick={() => setAdvisorMode(key)}
+            title={label}
+          >{label}</button>)}
+        </div>
       </div>
       {matrixLoading && <i className="advisor-refresh-v27" title="Refreshing matchup data" />}
     </div>
@@ -143,7 +147,7 @@ export default function RecommendationPanel({
     {top ? <>
       <PrimaryPick entry={top} onPick={onPick} enemyCount={enemyCount} refreshing={matrixLoading} />
       <div className="alt-picks-v27">
-        {recommendations.slice(1, 5).map(entry => <AlternatePick
+        {recommendations.slice(1, 9).map(entry => <AlternatePick
           key={entry.hero.id}
           entry={entry}
           onPick={onPick}
@@ -154,8 +158,6 @@ export default function RecommendationPanel({
       {!beginnerMode && <AdvancedDetails
         entry={top}
         enemyCount={enemyCount}
-        advisorMode={advisorMode}
-        setAdvisorMode={setAdvisorMode}
       />}
     </> : <div className="advisor-empty-v27">No hero fits this role yet.</div>}
   </section>;
