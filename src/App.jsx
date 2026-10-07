@@ -97,6 +97,7 @@ export default function App() {
   const [selectedPairLoading, setSelectedPairLoading] = useState(false);
   const [selectedPairError, setSelectedPairError] = useState(false);
   const [itemPopularity, setItemPopularity] = useState(null);
+  const [enemyItemPopularity, setEnemyItemPopularity] = useState(new Map());
   const [itemConstants, setItemConstants] = useState({});
   const [itemLoading, setItemLoading] = useState(false);
   const [query, setQuery] = useState('');
@@ -565,6 +566,28 @@ export default function App() {
   }, [draft.self, patch.id]);
 
   useEffect(() => {
+    let cancelled = false;
+    if (!draft.enemies.length) {
+      setEnemyItemPopularity(new Map());
+      return undefined;
+    }
+    (async () => {
+      const results = await Promise.allSettled(
+        draft.enemies.map(enemy => fetchHeroItemPopularity(enemy.id)),
+      );
+      if (cancelled) return;
+      const next = new Map();
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value) {
+          next.set(Number(draft.enemies[index].id), result.value);
+        }
+      });
+      setEnemyItemPopularity(next);
+    })();
+    return () => { cancelled = true; };
+  }, [draft.enemies, patch.id]);
+
+  useEffect(() => {
     const complete = draft.allies.length === 5 && draft.enemies.length === 5;
     if (complete && !draft.self) {
       const inferredSelf = draft.allies[draft.allies.length - 1];
@@ -957,7 +980,7 @@ export default function App() {
     <div className="ambient-grid" />
     <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} beginnerMode={beginnerMode} onSetMode={setExperienceMode} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
     <GamePlanBoundary onBack={() => setView('draft')}>
-      <GamePlan beginnerMode={beginnerMode} patch={patch} onlineLiveMatch={onlineLiveMatch} draft={draft} playerSide={playerSide} laneFilter={laneFilter} lineupRatings={lineupRatings} selectedScore={selectedScore} pairBreakdown={selectedPairs} pairLoading={selectedPairLoading} pairError={selectedPairError && !selectedPairs.some(x => x.games > 0)} positionLabel={laneLabels[laneFilter]} itemPopularity={itemPopularity} itemConstants={itemConstants} itemLoading={itemLoading} onBack={() => setView('draft')} />
+      <GamePlan beginnerMode={beginnerMode} patch={patch} onlineLiveMatch={onlineLiveMatch} draft={draft} playerSide={playerSide} laneFilter={laneFilter} lineupRatings={lineupRatings} selectedScore={selectedScore} pairBreakdown={selectedPairs} pairLoading={selectedPairLoading} pairError={selectedPairError && !selectedPairs.some(x => x.games > 0)} positionLabel={laneLabels[laneFilter]} itemPopularity={itemPopularity} enemyItemPopularity={enemyItemPopularity} itemConstants={itemConstants} itemLoading={itemLoading} onBack={() => setView('draft')} />
     </GamePlanBoundary>
     <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} profile={DEFAULT_PROFILE} player={player} winLoss={winLoss} recentMatches={recentMatches} allMatches={allMatches} historyLoading={historyLoading} historyError={historyError} playerHeroRows={playerHeroRows} heroes={heroes} recentSummary={recent} />
     <LegalModal open={legalOpen} onClose={() => setLegalOpen(false)} />
