@@ -243,7 +243,7 @@ function conditionalItems(hero, enemies, items, observedCounts, enemyItemPopular
   };
 
   add((observed('Butterfly') > 0 || likely('Butterfly') > 0 || threats.evasion) && core, ['Monkey King Bar'], 'ACCURACY NOW MATTERS', observed('Butterfly') > 0 ? 'An observed Butterfly makes MKB a concrete response.' : 'Enemy picks or common purchases create a real evasion risk.', observed('Butterfly') > 0);
-  add((observed('Black King Bar') > 0 || likely('Black King Bar') >= 2) && support, ['Scythe of Vyse', 'Abyssal Blade'], 'BKB WINDOWS WILL MATTER', 'Multiple enemy cores commonly buy spell immunity; favor control that can still matter around those windows.');
+  add((observed('Black King Bar') > 0 || likely('Black King Bar') >= 2) && support, ['Force Staff', 'Ghost Scepter', 'Glimmer Cape'], 'BKB WINDOWS WILL MATTER', 'Multiple enemy cores commonly buy spell immunity; prioritize surviving or repositioning through their commitment instead of feeding into the BKB window.');
   add((likely("Linken's Sphere") > 0 || threats.targetedBurst) && core, ['Black King Bar', "Linken's Sphere"], 'PROTECT THE KEY CAST WINDOW', 'Targeted disables or burst make spell protection more valuable than a generic damage slot.');
   add((likely('Orchid Malevolence') > 0 || likely('Bloodthorn') > 0 || threats.silence) && !support, ['Black King Bar', 'Manta Style'], 'SILENCE CAN SHUT YOU DOWN', 'Enemy abilities or common silence purchases threaten your ability to cast or escape.');
   add((likely('Pipe of Insight') > 0 || threats.magicBurst) && support, ['Pipe of Insight', 'Glimmer Cape'], 'MAGIC BURST IS THE FIGHT', 'Enemy spell damage profile makes team or single-target magic mitigation high value.');
