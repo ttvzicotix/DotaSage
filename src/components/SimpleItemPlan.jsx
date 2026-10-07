@@ -16,7 +16,7 @@ function buildCorePath(phases = []) {
       if (!id || seen.has(id)) continue;
       seen.add(id);
       rows.push({ ...row, phase });
-      if (rows.length >= 5) return rows;
+      if (rows.length >= 8) return rows;
     }
   }
   return rows;
@@ -41,7 +41,7 @@ export default function SimpleItemPlan({
     if (!q) return [];
     return items
       .filter(item => !item.recipe && normalize(item.dname).includes(q))
-      .slice(0, 6);
+      .slice(0, 10);
   }, [items, query]);
 
   return <section className="simple-item-plan simple-plan-card">
@@ -62,7 +62,7 @@ export default function SimpleItemPlan({
 
     <div className="simple-item-branches">
       <span>CHANGE COURSE WHEN…</span>
-      <div>{conditionals?.length ? conditionals.slice(0, 4).map(row => <article className={row.priority ? 'priority' : ''} key={row.item.id}>
+      <div>{conditionals?.length ? conditionals.slice(0, 6).map(row => <article className={row.priority ? 'priority' : ''} key={row.item.id}>
         <div className="branch-trigger"><small>IF</small><b>{row.title}</b></div>
         <i>→</i>
         <img src={itemImageUrl(row.item)} alt="" />
