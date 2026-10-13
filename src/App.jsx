@@ -129,10 +129,7 @@ export default function App() {
   const [providerStatus, setProviderStatus] = useState(null);
   const [roleMeta, setRoleMeta] = useState({ provider: null, position: null, rows: [] });
   const [copyDraftStatus, setCopyDraftStatus] = useState('');
-  const [beginnerMode, setBeginnerMode] = useState(() => {
-    try { return localStorage.getItem('dotasage:experience-mode') !== 'advanced'; }
-    catch { return true; }
-  });
+  const beginnerMode = false;
   const [draftSessionHydrated, setDraftSessionHydrated] = useState(false);
   const lastAutoPlanSignatureRef = useRef('');
   const lastLocalDraftSignatureRef = useRef('');
@@ -933,11 +930,7 @@ export default function App() {
     });
   }
 
-  function setExperienceMode(mode) {
-    const next = mode !== 'advanced';
-    setBeginnerMode(next);
-    try { localStorage.setItem('dotasage:experience-mode', next ? 'simple' : 'advanced'); } catch {}
-  }
+
 
   async function copyDraftLink() {
     const encoded = encodeDraftState(draftPayload({ draft, playerSide, laneFilter, advisorMode }));
@@ -996,7 +989,7 @@ export default function App() {
 
   if (view === 'gameplan' && draft.self) return <div className="app-shell gameplan-shell">
     <div className="ambient-grid" />
-    <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} beginnerMode={beginnerMode} onSetMode={setExperienceMode} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
+    <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} beginnerMode={beginnerMode} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
     <GamePlanBoundary onBack={() => setView('draft')}>
       <GamePlan beginnerMode={beginnerMode} patch={patch} onlineLiveMatch={onlineLiveMatch} draft={draft} playerSide={playerSide} laneFilter={laneFilter} lineupRatings={lineupRatings} selectedScore={selectedScore} pairBreakdown={selectedPairs} pairLoading={selectedPairLoading} pairError={selectedPairError && !selectedPairs.some(x => x.games > 0)} positionLabel={laneLabels[laneFilter]} itemPopularity={itemPopularity} enemyItemPopularity={enemyItemPopularity} itemConstants={itemConstants} itemLoading={itemLoading} onBack={() => setView('draft')} />
     </GamePlanBoundary>
@@ -1008,13 +1001,13 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="ambient-grid" />
-      <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} beginnerMode={beginnerMode} onSetMode={setExperienceMode} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
+      <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} beginnerMode={beginnerMode} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
 
       <div className={`command-layout consolidated-layout ${beginnerMode ? 'beginner-layout' : 'advanced-layout'}`}>
         <aside className="left-rail">
           <CompactPlayerConnect accountId={DEFAULT_PROFILE.accountId} player={player} loading={profileLoading} onOpenProfile={() => setProfileOpen(true)} />
           <DraftBoard beginnerMode={beginnerMode} draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; lastLocalDraftSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} onCopyLink={copyDraftLink} copyStatus={copyDraftStatus} playerSide={playerSide} onSideChange={changePlayerSide} onSwapTeams={swapTeams} onlineLiveEnabled={onlineLiveEnabled} onlineLiveStatus={onlineLiveStatus} onToggleOnlineLive={toggleOnlineLive} liveDraftEnabled={localDraftEnabled} liveDraftStatus={localDraftStatus} onToggleLiveDraft={toggleLocalDraftSync} />
-          {!beginnerMode && <details className="rail-intel-v28">
+          {!beginnerMode && <details className="rail-intel-v28" open>
             <summary><span>DRAFT INTEL</span><b>⌄</b></summary>
             <DraftInsights draft={draft} matrixLoading={matrixLoading} durationData={durationData} durationLoading={durationLoading} />
           </details>}
