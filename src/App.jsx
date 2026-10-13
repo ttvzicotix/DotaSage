@@ -225,10 +225,16 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchRoleMeta(laneFilter, patch.id).then(value => {
-      if (!cancelled) setRoleMeta(value || { provider: null, position: null, rows: [] });
-    });
-    return () => { cancelled = true; };
+    const refreshMeta = () => {
+      fetchRoleMeta(laneFilter, patch.id).then(value => {
+        if (!cancelled) setRoleMeta(value || { provider: null, position: null, rows: [] });
+      }).catch(() => {});
+    };
+    refreshMeta();
+    // Revalidate role-specific win rates throughout long draft sessions.
+    // The service-level 30-minute TTL bounds provider load.
+    const timer = window.setInterval(refreshMeta, 30 * 60 * 1000);
+    return () => { cancelled = true; window.clearInterval(timer); };
   }, [laneFilter, patch.id]);
 
   useEffect(() => {
