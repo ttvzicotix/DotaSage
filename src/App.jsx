@@ -129,16 +129,31 @@ export default function App() {
   const [providerStatus, setProviderStatus] = useState(null);
   const [roleMeta, setRoleMeta] = useState({ provider: null, position: null, rows: [] });
   const [copyDraftStatus, setCopyDraftStatus] = useState('');
-  const [beginnerMode, setBeginnerMode] = useState(() => {
-    try { return localStorage.getItem('dotasage:experience-mode') !== 'advanced'; }
-    catch { return true; }
-  });
+  const beginnerMode = false;
   const [draftSessionHydrated, setDraftSessionHydrated] = useState(false);
   const lastAutoPlanSignatureRef = useRef('');
   const lastLocalDraftSignatureRef = useRef('');
   const enemyMatrixRef = useRef(new Map());
   const prefetchedCounterRowsRef = useRef(new Map());
   const prefetchInFlightRef = useRef(new Set());
+
+  // Keep the hero breakdown usable if the dedicated heroes endpoint is unavailable,
+  // while being explicit that the fallback covers only matches currently loaded.
+  const displayedHeroRows = useMemo(() => {
+    if (playerHeroRows.some(row => Number(row.games || 0) > 0)) return playerHeroRows;
+    const matches = allMatches.length ? allMatches : recentMatches;
+    const totals = new Map();
+    for (const match of matches) {
+      const id = Number(match.hero_id);
+      if (!id) continue;
+      const current = totals.get(id) || { hero_id: id, games: 0, win: 0, _provider: 'Loaded matches' };
+      current.games += 1;
+      const radiant = Number(match.player_slot || 0) < 128;
+      if (Boolean(match.radiant_win) === radiant) current.win += 1;
+      totals.set(id, current);
+    }
+    return [...totals.values()].sort((a, b) => b.games - a.games);
+  }, [playerHeroRows, allMatches, recentMatches]);
 
   const statById = useMemo(() => new Map(heroStats.map(s => [Number(s.id), s])), [heroStats]);
   const heroById = useMemo(() => new Map(heroes.map(hero => [Number(hero.id), hero])), [heroes]);
@@ -210,10 +225,16 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchRoleMeta(laneFilter, patch.id).then(value => {
-      if (!cancelled) setRoleMeta(value || { provider: null, position: null, rows: [] });
-    });
-    return () => { cancelled = true; };
+    const refreshMeta = () => {
+      fetchRoleMeta(laneFilter, patch.id).then(value => {
+        if (!cancelled) setRoleMeta(value || { provider: null, position: null, rows: [] });
+      }).catch(() => {});
+    };
+    refreshMeta();
+    // Revalidate role-specific win rates throughout long draft sessions.
+    // The service-level 30-minute TTL bounds provider load.
+    const timer = window.setInterval(refreshMeta, 30 * 60 * 1000);
+    return () => { cancelled = true; window.clearInterval(timer); };
   }, [laneFilter, patch.id]);
 
   useEffect(() => {
@@ -782,6 +803,33 @@ export default function App() {
     return true;
   }).sort((a,b) => query ? (heroSearchScore(b, query) - heroSearchScore(a, query) || a.localized_name.localeCompare(b.localized_name)) : a.localized_name.localeCompare(b.localized_name)), [heroes, attr, query]);
 
+  // Preserve the highest-scoring pick, but avoid filling every alternative slot
+  // with near-identical hero archetypes when other competitive choices exist.
+  const diversifyAlternatives = rows => {
+    if (rows.length < 4) return rows;
+    const selected = [rows[0]];
+    const remaining = rows.slice(1, Math.min(rows.length, 36));
+    const best = Number(rows[0].score?.draftFit || 0);
+    while (selected.length < Math.min(12, rows.length) && remaining.length) {
+      let winner = 0;
+      let winnerScore = -Infinity;
+      remaining.forEach((entry, index) => {
+        const roleSet = new Set((entry.hero?.roles || []).map(value => String(value).toLowerCase()));
+        const overlap = selected.reduce((max, item) => {
+          const otherRoles = (item.hero?.roles || []).map(value => String(value).toLowerCase());
+          return Math.max(max, otherRoles.filter(role => roleSet.has(role)).length / Math.max(1, roleSet.size, otherRoles.length));
+        }, 0);
+        const score = Number(entry.score?.draftFit || 0);
+        // Diversity is only a tiebreaker for broadly competitive candidates.
+        const penalty = score >= best - 1.25 ? overlap * 0.3 : 0;
+        const adjusted = score - penalty;
+        if (adjusted > winnerScore) { winner = index; winnerScore = adjusted; }
+      });
+      selected.push(remaining.splice(winner, 1)[0]);
+    }
+    return [...selected, ...rows.filter(row => !selected.includes(row))];
+  };
+
   const recommendations = useMemo(() => {
     let rows = roleEligibleHeroes.filter(hero => !usedIds.has(hero.id)).map(hero => ({ hero, score: scoreBundle.scores.get(hero.id), personal: scoreBundle.scores.get(hero.id)?.personal, pairs: scoreBundle.pairBreakdowns.get(hero.id) || [] })).filter(x => x.score);
     if (advisorMode === 'counter') rows.sort((a,b) => b.score.enemyScore - a.score.enemyScore || b.score.draftFit - a.score.draftFit);
@@ -792,7 +840,7 @@ export default function App() {
       const rest = rows.filter(x => !stretch.includes(x)).sort((a,b) => b.score.draftFit - a.score.draftFit);
       rows = [...stretch, ...rest];
     } else rows.sort((a,b) => b.score.draftFit - a.score.draftFit || b.score.overall - a.score.overall);
-    return rows;
+    return advisorMode === 'best' ? diversifyAlternatives(rows) : rows;
   }, [roleEligibleHeroes, usedIds, scoreBundle, advisorMode]);
 
   const personalSummary = useMemo(() => {
@@ -915,11 +963,7 @@ export default function App() {
     });
   }
 
-  function setExperienceMode(mode) {
-    const next = mode !== 'advanced';
-    setBeginnerMode(next);
-    try { localStorage.setItem('dotasage:experience-mode', next ? 'simple' : 'advanced'); } catch {}
-  }
+
 
   async function copyDraftLink() {
     const encoded = encodeDraftState(draftPayload({ draft, playerSide, laneFilter, advisorMode }));
@@ -978,11 +1022,11 @@ export default function App() {
 
   if (view === 'gameplan' && draft.self) return <div className="app-shell gameplan-shell">
     <div className="ambient-grid" />
-    <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} beginnerMode={beginnerMode} onSetMode={setExperienceMode} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
+    <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} beginnerMode={beginnerMode} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
     <GamePlanBoundary onBack={() => setView('draft')}>
       <GamePlan beginnerMode={beginnerMode} patch={patch} onlineLiveMatch={onlineLiveMatch} draft={draft} playerSide={playerSide} laneFilter={laneFilter} lineupRatings={lineupRatings} selectedScore={selectedScore} pairBreakdown={selectedPairs} pairLoading={selectedPairLoading} pairError={selectedPairError && !selectedPairs.some(x => x.games > 0)} positionLabel={laneLabels[laneFilter]} itemPopularity={itemPopularity} enemyItemPopularity={enemyItemPopularity} itemConstants={itemConstants} itemLoading={itemLoading} onBack={() => setView('draft')} />
     </GamePlanBoundary>
-    <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} profile={DEFAULT_PROFILE} player={player} winLoss={winLoss} recentMatches={recentMatches} allMatches={allMatches} historyLoading={historyLoading} historyError={historyError} playerHeroRows={playerHeroRows} heroes={heroes} recentSummary={recent} />
+    <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} profile={DEFAULT_PROFILE} player={player} winLoss={winLoss} recentMatches={recentMatches} allMatches={allMatches} historyLoading={historyLoading} historyError={historyError} playerHeroRows={displayedHeroRows} heroes={heroes} recentSummary={recent} />
     <LegalModal open={legalOpen} onClose={() => setLegalOpen(false)} />
     <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
   </div>;
@@ -990,13 +1034,13 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="ambient-grid" />
-      <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} beginnerMode={beginnerMode} onSetMode={setExperienceMode} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
+      <Topbar patch={patch} player={player} profile={DEFAULT_PROFILE} providerStatus={providerStatus} beginnerMode={beginnerMode} onReset={hardReset} onOpenProfile={() => setProfileOpen(true)} onOpenLegal={() => setLegalOpen(true)} onOpenAbout={() => setAboutOpen(true)} />
 
       <div className={`command-layout consolidated-layout ${beginnerMode ? 'beginner-layout' : 'advanced-layout'}`}>
         <aside className="left-rail">
           <CompactPlayerConnect accountId={DEFAULT_PROFILE.accountId} player={player} loading={profileLoading} onOpenProfile={() => setProfileOpen(true)} />
           <DraftBoard beginnerMode={beginnerMode} draft={draft} onRemove={removeHero} onClear={() => { setDraft(emptyDraft()); lastAutoPlanSignatureRef.current = ''; lastLocalDraftSignatureRef.current = ''; }} onOpenGamePlan={() => setView('gameplan')} onCopyLink={copyDraftLink} copyStatus={copyDraftStatus} playerSide={playerSide} onSideChange={changePlayerSide} onSwapTeams={swapTeams} onlineLiveEnabled={onlineLiveEnabled} onlineLiveStatus={onlineLiveStatus} onToggleOnlineLive={toggleOnlineLive} liveDraftEnabled={localDraftEnabled} liveDraftStatus={localDraftStatus} onToggleLiveDraft={toggleLocalDraftSync} />
-          {!beginnerMode && <details className="rail-intel-v28">
+          {!beginnerMode && <details className="rail-intel-v28" open>
             <summary><span>DRAFT INTEL</span><b>⌄</b></summary>
             <DraftInsights draft={draft} matrixLoading={matrixLoading} durationData={durationData} durationLoading={durationLoading} />
           </details>}
