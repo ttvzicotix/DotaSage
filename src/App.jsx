@@ -803,6 +803,33 @@ export default function App() {
     return true;
   }).sort((a,b) => query ? (heroSearchScore(b, query) - heroSearchScore(a, query) || a.localized_name.localeCompare(b.localized_name)) : a.localized_name.localeCompare(b.localized_name)), [heroes, attr, query]);
 
+  // Preserve the highest-scoring pick, but avoid filling every alternative slot
+  // with near-identical hero archetypes when other competitive choices exist.
+  const diversifyAlternatives = rows => {
+    if (rows.length < 4) return rows;
+    const selected = [rows[0]];
+    const remaining = rows.slice(1, Math.min(rows.length, 36));
+    const best = Number(rows[0].score?.draftFit || 0);
+    while (selected.length < Math.min(12, rows.length) && remaining.length) {
+      let winner = 0;
+      let winnerScore = -Infinity;
+      remaining.forEach((entry, index) => {
+        const roleSet = new Set((entry.hero?.roles || []).map(value => String(value).toLowerCase()));
+        const overlap = selected.reduce((max, item) => {
+          const otherRoles = (item.hero?.roles || []).map(value => String(value).toLowerCase());
+          return Math.max(max, otherRoles.filter(role => roleSet.has(role)).length / Math.max(1, roleSet.size, otherRoles.length));
+        }, 0);
+        const score = Number(entry.score?.draftFit || 0);
+        // Diversity is only a tiebreaker for broadly competitive candidates.
+        const penalty = score >= best - 1.25 ? overlap * 0.3 : 0;
+        const adjusted = score - penalty;
+        if (adjusted > winnerScore) { winner = index; winnerScore = adjusted; }
+      });
+      selected.push(remaining.splice(winner, 1)[0]);
+    }
+    return [...selected, ...rows.filter(row => !selected.includes(row))];
+  };
+
   const recommendations = useMemo(() => {
     let rows = roleEligibleHeroes.filter(hero => !usedIds.has(hero.id)).map(hero => ({ hero, score: scoreBundle.scores.get(hero.id), personal: scoreBundle.scores.get(hero.id)?.personal, pairs: scoreBundle.pairBreakdowns.get(hero.id) || [] })).filter(x => x.score);
     if (advisorMode === 'counter') rows.sort((a,b) => b.score.enemyScore - a.score.enemyScore || b.score.draftFit - a.score.draftFit);
@@ -813,7 +840,7 @@ export default function App() {
       const rest = rows.filter(x => !stretch.includes(x)).sort((a,b) => b.score.draftFit - a.score.draftFit);
       rows = [...stretch, ...rest];
     } else rows.sort((a,b) => b.score.draftFit - a.score.draftFit || b.score.overall - a.score.overall);
-    return rows;
+    return advisorMode === 'best' ? diversifyAlternatives(rows) : rows;
   }, [roleEligibleHeroes, usedIds, scoreBundle, advisorMode]);
 
   const personalSummary = useMemo(() => {
