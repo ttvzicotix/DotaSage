@@ -140,6 +140,24 @@ export default function App() {
   const prefetchedCounterRowsRef = useRef(new Map());
   const prefetchInFlightRef = useRef(new Set());
 
+  // Keep the hero breakdown usable if the dedicated heroes endpoint is unavailable,
+  // while being explicit that the fallback covers only matches currently loaded.
+  const displayedHeroRows = useMemo(() => {
+    if (playerHeroRows.some(row => Number(row.games || 0) > 0)) return playerHeroRows;
+    const matches = allMatches.length ? allMatches : recentMatches;
+    const totals = new Map();
+    for (const match of matches) {
+      const id = Number(match.hero_id);
+      if (!id) continue;
+      const current = totals.get(id) || { hero_id: id, games: 0, win: 0, _provider: 'Loaded matches' };
+      current.games += 1;
+      const radiant = Number(match.player_slot || 0) < 128;
+      if (Boolean(match.radiant_win) === radiant) current.win += 1;
+      totals.set(id, current);
+    }
+    return [...totals.values()].sort((a, b) => b.games - a.games);
+  }, [playerHeroRows, allMatches, recentMatches]);
+
   const statById = useMemo(() => new Map(heroStats.map(s => [Number(s.id), s])), [heroStats]);
   const heroById = useMemo(() => new Map(heroes.map(hero => [Number(hero.id), hero])), [heroes]);
   const roleMetaById = useMemo(() => new Map((roleMeta?.rows || []).map(row => [Number(row.hero_id), row])), [roleMeta]);
@@ -982,7 +1000,7 @@ export default function App() {
     <GamePlanBoundary onBack={() => setView('draft')}>
       <GamePlan beginnerMode={beginnerMode} patch={patch} onlineLiveMatch={onlineLiveMatch} draft={draft} playerSide={playerSide} laneFilter={laneFilter} lineupRatings={lineupRatings} selectedScore={selectedScore} pairBreakdown={selectedPairs} pairLoading={selectedPairLoading} pairError={selectedPairError && !selectedPairs.some(x => x.games > 0)} positionLabel={laneLabels[laneFilter]} itemPopularity={itemPopularity} enemyItemPopularity={enemyItemPopularity} itemConstants={itemConstants} itemLoading={itemLoading} onBack={() => setView('draft')} />
     </GamePlanBoundary>
-    <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} profile={DEFAULT_PROFILE} player={player} winLoss={winLoss} recentMatches={recentMatches} allMatches={allMatches} historyLoading={historyLoading} historyError={historyError} playerHeroRows={playerHeroRows} heroes={heroes} recentSummary={recent} />
+    <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} profile={DEFAULT_PROFILE} player={player} winLoss={winLoss} recentMatches={recentMatches} allMatches={allMatches} historyLoading={historyLoading} historyError={historyError} playerHeroRows={displayedHeroRows} heroes={heroes} recentSummary={recent} />
     <LegalModal open={legalOpen} onClose={() => setLegalOpen(false)} />
     <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
   </div>;
