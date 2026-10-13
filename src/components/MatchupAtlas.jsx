@@ -65,3 +65,4 @@ export default function MatchupAtlas({ hero, allies = [], enemies = [], patch })
       <p className="gpv2-atlas-foot">Synergy needs same-team pair samples. Missing samples stay unknown; no counter score is substituted.</p>
     </div>}
   </section>;
+}
