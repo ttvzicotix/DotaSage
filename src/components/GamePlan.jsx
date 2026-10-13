@@ -256,7 +256,14 @@ function conditionalItems(hero, enemies, items, observedCounts, enemyItemPopular
   add(countEnemyRole(enemies, 'Initiator') >= 2, support ? ['Force Staff'] : ["Linken's Sphere", 'Black King Bar'], 'IF YOU KEEP GETTING JUMPED', 'Survive or redirect the first enemy commitment.');
   add(countEnemyRole(enemies, 'Carry') >= 2, support ? ['Ghost Scepter', "Heaven's Halberd"] : ['Butterfly', "Shiva's Guard"], 'IF PHYSICAL DAMAGE TAKES OVER', 'Shift a slot toward surviving right-click commitment.');
   add(threats.illusions, core ? ['Mjollnir', 'Maelstrom', 'Battle Fury'] : ["Shiva's Guard"], 'IF ILLUSIONS TAKE OVER', 'Add repeatable area damage or control.');
-  return rows.sort((a, b) => Number(b.priority) - Number(a.priority)).slice(0, 6);
+  const lookup = itemLookup(items);
+  return rows.sort((a, b) => Number(b.priority) - Number(a.priority)).slice(0, 8).map(row => {
+    const upgrades = items.filter(candidate =>
+      Number(candidate.cost || 0) > Number(row.item.cost || 0) &&
+      !candidate.recipe && itemBuildsFrom(candidate, row.item, lookup)
+    ).sort((a, b) => Number(a.cost || 0) - Number(b.cost || 0));
+    return { ...row, upgrades: upgrades.slice(0, 3) };
+  });
 }
 
 function observedImpact(observedCounts, items) {
@@ -569,14 +576,14 @@ function ObservedItems({ items, counts, onChange }) {
 function ItemLab({ phases, targets, paths, conditionals, impacts, loading }) {
   if (loading) return <section className="gpv2-card gpv2-itemlab"><div className="gpv2-card-head"><div><span>ITEM LAB</span><strong>Loading OpenDota item evidence…</strong></div></div></section>;
   return <section className="gpv2-card gpv2-itemlab">
-    <div className="gpv2-card-head"><div><span>ITEM LAB</span><strong>Popular purchases + recipe-safe targets + situational responses</strong></div><small>OpenDota popularity ≠ literal six-slot build</small></div>
+    <div className="gpv2-card-head"><div><span>ITEM LAB</span><strong>Common item patterns, upgrade paths and counter-specific pivots</strong></div><small>Inventory snapshots are independent historical patterns, not guaranteed six-slot purchase orders</small></div>
     <div className="gpv2-item-main">
       <div className="gpv2-phase-stack">{phases.map(([phase, rows]) => <div className="gpv2-phase" key={phase}><span>{phase}</span><div>{rows.slice(0, 7).map(row => <div key={row.id}><img src={itemImageUrl(row.item)} alt="" /><small>{row.item.dname}</small></div>)}</div></div>)}</div>
       <aside className="gpv2-target-stack"><span>INVENTORY SHAPES</span>{targets.map(([phase, rows]) => <div key={phase}><b>{phase}</b><div>{rows.map(row => <img key={row.item.id} src={itemImageUrl(row.item)} title={row.item.dname} alt="" />)}</div></div>)}</aside>
     </div>
     {paths.length > 0 && <div className="gpv2-paths"><span>VERIFIED RECIPE PATHS</span><div>{paths.map(path => <div key={`${path.source.item.id}-${path.target.item.id}`}><img src={itemImageUrl(path.source.item)} alt="" /><b>{path.source.item.dname}</b><i>→</i><img src={itemImageUrl(path.target.item)} alt="" /><b>{path.target.item.dname}</b></div>)}</div></div>}
     {(conditionals.length > 0 || impacts.length > 0) && <div className="gpv2-item-responses">
-      <div>{conditionals.map(row => <article className={row.priority ? 'priority' : ''} key={row.item.id}><img src={itemImageUrl(row.item)} alt="" /><span><b>{row.title}</b><strong>{row.item.dname}</strong><small>{row.reason}</small></span></article>)}</div>
+      <div>{conditionals.map(row => <article className={row.priority ? 'priority' : ''} key={row.item.id}><img src={itemImageUrl(row.item)} alt="" /><span><b>{row.title}</b><strong>{row.item.dname}</strong><small>{row.reason}</small>{row.upgrades?.length > 0 && <small>UPGRADE OPTIONS: {row.upgrades.map(item => item.dname).join(' / ')}</small>}<small>Situational pivot — replace a lower-priority inventory slot if chosen.</small></span></article>)}</div>
       {impacts.length > 0 && <aside><span>WHAT CHANGED</span>{impacts.map((text, index) => <p key={index}>{text}</p>)}</aside>}
     </div>}
   </section>;
