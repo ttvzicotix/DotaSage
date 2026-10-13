@@ -810,7 +810,7 @@ export default function GamePlan({
     <div className="gpv2-toolbar advanced-toolbar-v28">
       <button onClick={onBack}>← DRAFT</button>
       <span>GAME PLAN · PATCH {patch?.id || '—'}</span>
-      <details className="advanced-tools-v28">
+      <details className="advanced-tools-v28" open>
         <summary>TOOLS</summary>
         <div>
           <button onClick={() => document.getElementById('post-match-review')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>POST-MATCH</button>
@@ -880,7 +880,7 @@ export default function GamePlan({
           loading={itemLoading}
         />
       </div>
-      <details className="advanced-deep-v28">
+      <details className="advanced-deep-v28" open>
         <summary>DETAILED ITEM DATA <span>popular purchases, recipes & inventory shapes</span><b>⌄</b></summary>
         <ItemLab phases={phases} targets={targets} paths={paths} conditionals={conditionals} impacts={impacts} loading={itemLoading} />
       </details>
@@ -909,7 +909,7 @@ export default function GamePlan({
         <ThreatList title="Biggest threats" rows={threats} loading={pairLoading} error={pairError && !knownPairs.length} />
         <ThreatList title="Best matchups" rows={opportunities} loading={pairLoading} error={false} positive />
       </div>
-      <details className="provenance-v28">
+      <details className="provenance-v28" open>
         <summary>DATA <span>{matchupSourceLabel} · {pairSamples ? pairSamples.toLocaleString() : 'building'} pair samples</span><b>⌄</b></summary>
         <div>
           <span><b>{evidenceLabel}</b> evidence</span>
