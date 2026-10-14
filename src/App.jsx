@@ -21,6 +21,7 @@ import { fetchOnlineLive } from './services/onlineLive';
 import useCurrentPatch from './hooks/useCurrentPatch';
 import { fetchProviderStatus } from './services/providerStatus';
 import { decodeDraftState, draftPayload, encodeDraftState } from './utils/draftShare';
+import { collectEnemyItemPopularity } from './engine/conditionalItems';
 import { fetchRoleMeta } from './services/roleMeta';
 import { matchesLane } from './engine/roleEligibility';
 import { forecastEnemyPicks, futureCounterScoreForCandidate } from './engine/draftForecast';
@@ -576,13 +577,7 @@ export default function App() {
         draft.enemies.map(enemy => fetchHeroItemPopularity(enemy.id)),
       );
       if (cancelled) return;
-      const next = new Map();
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled' && result.value) {
-          next.set(Number(draft.enemies[index].id), result.value);
-        }
-      });
-      setEnemyItemPopularity(next);
+      setEnemyItemPopularity(collectEnemyItemPopularity(draft.enemies, results));
     })();
     return () => { cancelled = true; };
   }, [draft.enemies, patch.id]);
