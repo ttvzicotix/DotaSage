@@ -5,7 +5,7 @@ const advisor = fs.readFileSync(new URL('../src/components/RecommendationPanel.j
 const app = fs.readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8');
 const gameplan = fs.readFileSync(new URL('../src/components/GamePlan.jsx', import.meta.url), 'utf8');
 const itemPlan = fs.readFileSync(new URL('../src/components/SimpleItemPlan.jsx', import.meta.url), 'utf8');
-const styles = fs.readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
+const styles = fs.readFileSync(new URL('../src/styles/viewport-resilience.css', import.meta.url), 'utf8');
 
 assert.match(advisor, /const top = recommendations\[0\]/, 'the primary recommendation must be the first rank');
 assert.match(advisor, /recommendations\.slice\(1,\s*9\)\.map\(/, 'render eight alternatives after the primary pick');
