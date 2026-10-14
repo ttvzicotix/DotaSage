@@ -23,7 +23,7 @@ for (const mode of ['best', 'counter', 'meta', 'personal', 'learn']) {
 assert.equal((advisor.match(/\['(?:best|counter|meta|personal|learn)',/g) || []).length, 5, 'render all five modes exactly once');
 assert.doesNotMatch(advisor, /<select value=\{advisorMode\}/, 'strategy should no longer be hidden in Details');
 assert.match(app, /<RecommendationPanel[^>]*advisorMode=\{advisorMode\} setAdvisorMode=\{setAdvisorMode\}/, 'App must wire selection state to the component');
-assert.match(app, /<GamePlan[^>]*enemyItemPopularity=\{enemyItemPopularity\}/, 'enemy popularity should reach the item plan');
+assert.match(app, /<GamePlan\b[^\n]*enemyItemPopularity=\{enemyItemPopularity\}/, 'enemy popularity should reach the item plan');
 assert.match(gameplan, /conditionalItems\(hero, draft\.enemies \|\| \[\], allItems, observedCounts, enemyItemPopularity\)/, 'plan must call the tested recommendation engine');
 assert.match(itemPlan, /conditionals\.slice\(0,\s*6\)/, 'six conditional pivots should be visible');
 assert.match(styles, /\.advisor-mode-tabs-v27\s*\{/, 'mode styles should exist in the compact advisor');
