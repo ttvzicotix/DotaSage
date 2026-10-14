@@ -122,18 +122,20 @@ export default function RecommendationPanel({
     <div className="advisor-bar-v27">
       <strong>PICK</strong>
       <div className="advisor-controls-v27">
-        <div className="role-tabs-v27" aria-label="Choose role">
+        <div className="role-tabs-v27" role="group" aria-label="Choose role">
           {positions.map(([key, short, title]) => <button
             key={key}
             className={laneFilter === key ? 'active' : ''}
+            aria-pressed={laneFilter === key}
             onClick={() => setLaneFilter(key)}
             title={title}
           >{short}</button>)}
         </div>
-        <div className="advisor-mode-tabs-v27" aria-label="Choose recommendation strategy">
+        <div className="advisor-mode-tabs-v27" role="group" aria-label="Choose recommendation strategy">
           {advisorModes.map(([key, label]) => <button
             key={key}
             className={advisorMode === key ? 'active' : ''}
+            aria-pressed={advisorMode === key}
             onClick={() => setAdvisorMode(key)}
             title={label}
           >{label}</button>)}
