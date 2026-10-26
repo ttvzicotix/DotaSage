@@ -7,6 +7,7 @@ import { fetchRecentMatches, fetchMatch, itemImageUrl } from '../services/openDo
 import { DEFAULT_PROFILE } from '../data/defaultProfile';
 import { buildLaneMap, positionName } from '../engine/lanePrediction';
 import { fetchLocalGameState, fetchLocalGsiHealth } from '../services/localGsi';
+import { conditionalItems } from '../engine/conditionalItems';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const signed = value => {
@@ -186,77 +187,6 @@ function inventoryTargets(phases, lookup) {
 function findItem(items, names = []) {
   const wanted = names.map(searchNormalize);
   return items.find(item => wanted.includes(searchNormalize(item.dname)) || wanted.includes(searchNormalize(item.name)));
-}
-
-function countEnemyRole(enemies, role) {
-  return enemies.filter(hero => hasRole(hero, role)).length;
-}
-
-function topTrendItemIds(popularity, limit = 8) {
-  if (!popularity) return new Set();
-  const groups = [popularity.early_game_items, popularity.mid_game_items, popularity.late_game_items];
-  const rows = groups.flatMap(group => Object.entries(group || {}).map(([id, uses]) => [Number(id), Number(uses || 0)]));
-  rows.sort((a, b) => b[1] - a[1]);
-  return new Set(rows.slice(0, limit).map(([id]) => id));
-}
-
-function enemyTrendCount(enemyItemPopularity, items, names = []) {
-  const target = findItem(items, names);
-  if (!target) return 0;
-  let count = 0;
-  for (const popularity of enemyItemPopularity?.values?.() || []) {
-    if (topTrendItemIds(popularity, 10).has(Number(target.id))) count += 1;
-  }
-  return count;
-}
-
-function enemyThreats(enemies = []) {
-  const names = new Set(enemies.map(hero => hero.localized_name));
-  const hasAny = list => list.some(name => names.has(name));
-  return {
-    silence: hasAny(['Silencer', 'Death Prophet', 'Drow Ranger', 'Night Stalker', 'Puck', 'Skywrath Mage', 'Disruptor', 'Grimstroke']),
-    targetedBurst: hasAny(['Legion Commander', 'Doom', 'Bane', 'Beastmaster', 'Lion', 'Lina', 'Necrophos', 'Nyx Assassin', 'Shadow Shaman']),
-    evasion: hasAny(['Phantom Assassin', 'Windranger', 'Brewmaster']),
-    illusions: hasAny(['Phantom Lancer', 'Naga Siren', 'Terrorblade', 'Chaos Knight', 'Meepo']),
-    sustain: hasAny(['Huskar', 'Alchemist', 'Morphling', 'Necrophos', 'Death Prophet', 'Timbersaw', 'Bristleback']),
-    magicBurst: hasAny(['Zeus', 'Lina', 'Leshrac', 'Skywrath Mage', 'Invoker', 'Pugna', 'Lion', 'Storm Spirit']),
-    summons: hasAny(['Chen', 'Enchantress', 'Beastmaster', 'Lycan', 'Broodmother', 'Nature\'s Prophet', 'Visage']),
-    invis: hasAny(['Riki', 'Bounty Hunter', 'Clinkz', 'Nyx Assassin', 'Mirana', 'Weaver']),
-  };
-}
-
-function conditionalItems(hero, enemies, items, observedCounts, enemyItemPopularity = new Map()) {
-  const rows = [];
-  const core = hasRole(hero, 'Carry') || hasRole(hero, 'Nuker');
-  const support = hasRole(hero, 'Support');
-  const threats = enemyThreats(enemies);
-  const likely = (...names) => enemyTrendCount(enemyItemPopularity, items, names);
-  const observed = name => {
-    const item = findItem(items, [name]);
-    return item ? Number(observedCounts[item.id] || 0) : 0;
-  };
-  const add = (condition, names, title, reason, priority = false) => {
-    if (!condition) return;
-    const item = findItem(items, names);
-    if (!item || rows.some(row => row.item.id === item.id)) return;
-    rows.push({ item, title, reason, priority });
-  };
-
-  add((observed('Butterfly') > 0 || likely('Butterfly') > 0 || threats.evasion) && core, ['Monkey King Bar'], 'ACCURACY NOW MATTERS', observed('Butterfly') > 0 ? 'An observed Butterfly makes MKB a concrete response.' : 'Enemy picks or common purchases create a real evasion risk.', observed('Butterfly') > 0);
-  add((observed('Black King Bar') > 0 || likely('Black King Bar') >= 2) && support, ['Force Staff', 'Ghost Scepter', 'Glimmer Cape'], 'BKB WINDOWS WILL MATTER', 'Multiple enemy cores commonly buy spell immunity; prioritize surviving or repositioning through their commitment instead of feeding into the BKB window.');
-  add((likely("Linken's Sphere") > 0 || threats.targetedBurst) && core, ['Black King Bar', "Linken's Sphere"], 'PROTECT THE KEY CAST WINDOW', 'Targeted disables or burst make spell protection more valuable than a generic damage slot.');
-  add((likely('Orchid Malevolence') > 0 || likely('Bloodthorn') > 0 || threats.silence) && !support, ['Black King Bar', 'Manta Style'], 'SILENCE CAN SHUT YOU DOWN', 'Enemy abilities or common silence purchases threaten your ability to cast or escape.');
-  add((likely('Pipe of Insight') > 0 || threats.magicBurst) && support, ['Pipe of Insight', 'Glimmer Cape'], 'MAGIC BURST IS THE FIGHT', 'Enemy spell damage profile makes team or single-target magic mitigation high value.');
-  add((likely('Heart of Tarrasque') > 0 || likely('Satanic') > 0 || threats.sustain), support ? ['Spirit Vessel'] : ['Eye of Skadi', 'Spirit Vessel'], 'CUT THEIR SUSTAIN', 'Enemy heroes or common purchases rely on healing, regen, or lifesteal.');
-  add((likely('Manta Style') > 0 || threats.illusions || threats.summons), core ? ['Mjollnir', 'Maelstrom', 'Battle Fury'] : ["Shiva's Guard"], 'CLEAR EXTRA UNITS', 'Enemy illusions, summons, or common Manta purchases reward repeatable area damage.');
-  add(threats.invis && support, ['Dust of Appearance', 'Sentry Ward', 'Gem of True Sight'], 'REVEAL IS MANDATORY', 'Enemy heroes can rely on invisibility; reserve detection instead of treating it as an optional slot.');
-  add(observed('Ghost Scepter') + observed("Eul's Scepter of Divinity") + observed('Glimmer Cape') > 0 && core, ['Nullifier'], 'SAVES ARE BLOCKING KILLS', 'Enemy defensive items are already resetting physical kill attempts.', true);
-  add(observed('Satanic') + observed('Heart of Tarrasque') > 0, support ? ['Spirit Vessel'] : ['Eye of Skadi', 'Spirit Vessel'], 'SUSTAIN IS SHOWING', 'Observed sustain makes anti-heal more valuable.', true);
-  add(countEnemyRole(enemies, 'Disabler') >= 2 || countEnemyRole(enemies, 'Nuker') >= 3, core ? ['Black King Bar'] : ['Force Staff', 'Glimmer Cape'], 'IF CONTROL STOPS YOUR JOB', core ? 'Protect the damage window.' : 'Create space for yourself or a core.');
-  add(countEnemyRole(enemies, 'Initiator') >= 2, support ? ['Force Staff'] : ["Linken's Sphere", 'Black King Bar'], 'IF YOU KEEP GETTING JUMPED', 'Survive or redirect the first enemy commitment.');
-  add(countEnemyRole(enemies, 'Carry') >= 2, support ? ['Ghost Scepter', "Heaven's Halberd"] : ['Butterfly', "Shiva's Guard"], 'IF PHYSICAL DAMAGE TAKES OVER', 'Shift a slot toward surviving right-click commitment.');
-  add(threats.illusions, core ? ['Mjollnir', 'Maelstrom', 'Battle Fury'] : ["Shiva's Guard"], 'IF ILLUSIONS TAKE OVER', 'Add repeatable area damage or control.');
-  return rows.sort((a, b) => Number(b.priority) - Number(a.priority)).slice(0, 6);
 }
 
 function observedImpact(observedCounts, items) {
@@ -569,14 +499,14 @@ function ObservedItems({ items, counts, onChange }) {
 function ItemLab({ phases, targets, paths, conditionals, impacts, loading }) {
   if (loading) return <section className="gpv2-card gpv2-itemlab"><div className="gpv2-card-head"><div><span>ITEM LAB</span><strong>Loading OpenDota item evidence…</strong></div></div></section>;
   return <section className="gpv2-card gpv2-itemlab">
-    <div className="gpv2-card-head"><div><span>ITEM LAB</span><strong>Popular purchases + recipe-safe targets + situational responses</strong></div><small>OpenDota popularity ≠ literal six-slot build</small></div>
+    <div className="gpv2-card-head"><div><span>ITEM LAB</span><strong>Common item patterns, upgrade paths and counter-specific pivots</strong></div><small>Inventory snapshots are independent historical patterns, not guaranteed six-slot purchase orders</small></div>
     <div className="gpv2-item-main">
       <div className="gpv2-phase-stack">{phases.map(([phase, rows]) => <div className="gpv2-phase" key={phase}><span>{phase}</span><div>{rows.slice(0, 7).map(row => <div key={row.id}><img src={itemImageUrl(row.item)} alt="" /><small>{row.item.dname}</small></div>)}</div></div>)}</div>
       <aside className="gpv2-target-stack"><span>INVENTORY SHAPES</span>{targets.map(([phase, rows]) => <div key={phase}><b>{phase}</b><div>{rows.map(row => <img key={row.item.id} src={itemImageUrl(row.item)} title={row.item.dname} alt="" />)}</div></div>)}</aside>
     </div>
     {paths.length > 0 && <div className="gpv2-paths"><span>VERIFIED RECIPE PATHS</span><div>{paths.map(path => <div key={`${path.source.item.id}-${path.target.item.id}`}><img src={itemImageUrl(path.source.item)} alt="" /><b>{path.source.item.dname}</b><i>→</i><img src={itemImageUrl(path.target.item)} alt="" /><b>{path.target.item.dname}</b></div>)}</div></div>}
     {(conditionals.length > 0 || impacts.length > 0) && <div className="gpv2-item-responses">
-      <div>{conditionals.map(row => <article className={row.priority ? 'priority' : ''} key={row.item.id}><img src={itemImageUrl(row.item)} alt="" /><span><b>{row.title}</b><strong>{row.item.dname}</strong><small>{row.reason}</small></span></article>)}</div>
+      <div>{conditionals.map(row => <article className={row.priority ? 'priority' : ''} key={row.item.id}><img src={itemImageUrl(row.item)} alt="" /><span><b>{row.title}</b><strong>{row.item.dname}</strong><small>{row.reason}</small>{row.upgrades?.length > 0 && <small>UPGRADE OPTIONS: {row.upgrades.map(item => item.dname).join(' / ')}</small>}<small>Situational pivot — replace a lower-priority inventory slot if chosen.</small></span></article>)}</div>
       {impacts.length > 0 && <aside><span>WHAT CHANGED</span>{impacts.map((text, index) => <p key={index}>{text}</p>)}</aside>}
     </div>}
   </section>;
@@ -676,7 +606,10 @@ export default function GamePlan({
   const deepPhases = useMemo(() => buildItemPhases(itemPopularity, itemConstants, 36), [itemPopularity, itemConstants]);
   const paths = useMemo(() => buildUpgradePaths(deepPhases, lookup), [deepPhases, lookup]);
   const targets = useMemo(() => inventoryTargets(deepPhases, lookup), [deepPhases, lookup]);
-  const conditionals = useMemo(() => hero ? conditionalItems(hero, draft.enemies || [], allItems, observedCounts, enemyItemPopularity) : [], [hero, draft.enemies, allItems, observedCounts, enemyItemPopularity]);
+  const conditionals = useMemo(() => {
+    const rows = hero ? conditionalItems(hero, draft.enemies || [], allItems, observedCounts, enemyItemPopularity) : [];
+    return rows.map(row => ({ ...row, upgrades: allItems.filter(item => !item.recipe && Number(item.cost) > Number(row.item.cost) && itemBuildsFrom(item, row.item, lookup)).sort((a, b) => a.cost - b.cost).slice(0, 3) }));
+  }, [hero, draft.enemies, allItems, observedCounts, enemyItemPopularity, lookup]);
   const impacts = useMemo(() => observedImpact(observedCounts, allItems), [observedCounts, allItems]);
 
   if (!hero) return null;
@@ -810,7 +743,7 @@ export default function GamePlan({
     <div className="gpv2-toolbar advanced-toolbar-v28">
       <button onClick={onBack}>← DRAFT</button>
       <span>GAME PLAN · PATCH {patch?.id || '—'}</span>
-      <details className="advanced-tools-v28">
+      <details className="advanced-tools-v28" open>
         <summary>TOOLS</summary>
         <div>
           <button onClick={() => document.getElementById('post-match-review')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>POST-MATCH</button>
@@ -869,6 +802,12 @@ export default function GamePlan({
     </section>}
 
     {advancedTab === 'build' && <section className="advanced-workspace-v28 build-workspace-v28">
+      <section className="gpv2-card"><h3>Practice one habit this game</h3>
+        <p>Before a fight, identify the enemy spell that stops your job. Wait for it, dodge it, or plan a defensive item around it; spell protection does not answer every disable.</p>
+        <p>Check the minimap between last hits. When enemies disappear, farm toward vision and a nearby ally instead of walking uphill alone.</p>
+        <p>After winning a fight, convert the advantage into a tower, Roshan, vision or safer farm. After a death, ask which missing information or cooldown would have changed your decision.</p>
+        <p>Item trends are possibilities, not a guaranteed purchase order. Compare timing, damage type, dispels and your team's needs before choosing a branch.</p>
+      </section>
       <div className="simple-build-layout">
         <SkillBuild hero={hero} />
         <SimpleItemPlan
@@ -880,7 +819,7 @@ export default function GamePlan({
           loading={itemLoading}
         />
       </div>
-      <details className="advanced-deep-v28">
+      <details className="advanced-deep-v28" open>
         <summary>DETAILED ITEM DATA <span>popular purchases, recipes & inventory shapes</span><b>⌄</b></summary>
         <ItemLab phases={phases} targets={targets} paths={paths} conditionals={conditionals} impacts={impacts} loading={itemLoading} />
       </details>
@@ -909,7 +848,7 @@ export default function GamePlan({
         <ThreatList title="Biggest threats" rows={threats} loading={pairLoading} error={pairError && !knownPairs.length} />
         <ThreatList title="Best matchups" rows={opportunities} loading={pairLoading} error={false} positive />
       </div>
-      <details className="provenance-v28">
+      <details className="provenance-v28" open>
         <summary>DATA <span>{matchupSourceLabel} · {pairSamples ? pairSamples.toLocaleString() : 'building'} pair samples</span><b>⌄</b></summary>
         <div>
           <span><b>{evidenceLabel}</b> evidence</span>
