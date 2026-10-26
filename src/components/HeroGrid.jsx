@@ -1,3 +1,4 @@
+import HeroPortrait from './HeroPortrait';
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import HeroCard from './HeroCard';
 import { heroSearchScore } from '../data/heroAliases';
@@ -27,7 +28,7 @@ function QuickHero({ hero, state, onAction, onPrefetchEvidence, playerSide, begi
     onFocus={() => onPrefetchEvidence?.(hero)}
   >
     <div className="hero-card-v27-art">
-      <img src={hero.portrait} alt="" />
+      <HeroPortrait hero={hero} />
     </div>
     <div className="hero-card-v27-foot">
       <strong>{hero.localized_name}</strong>

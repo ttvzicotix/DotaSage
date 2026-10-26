@@ -1,3 +1,4 @@
+import HeroPortrait from './HeroPortrait';
 const positions = [
   ['all', 'FLEX', 'Any position'],
   ['safe', '1', 'Carry · Safe lane'],
@@ -43,7 +44,7 @@ function ForecastStrip({ forecast = [], loading = false }) {
         key={row.hero.id}
         title="Heuristic forecast from role gaps, draft fit, popularity/meta and available matchup evidence."
       >
-        <img src={row.hero.portrait} alt="" />
+        <HeroPortrait hero={row.hero} />
         <b>{row.hero.localized_name}</b>
       </div>)}
       {loading && <i className="enemy-forecast-v27-loading" title="Refreshing forecast" />}
@@ -57,7 +58,7 @@ function PrimaryPick({ entry, onPick, enemyCount, refreshing = false }) {
 
   return <article className="pick-card-v27">
     <div className="pick-card-v27-art">
-      <img src={hero.portrait} alt="" />
+      <HeroPortrait hero={hero} />
     </div>
     <div className="pick-card-v27-body">
       <div className="pick-card-v27-title">
@@ -78,8 +79,8 @@ function PrimaryPick({ entry, onPick, enemyCount, refreshing = false }) {
 function AlternatePick({ entry, onPick, refreshing = false, enemyCount = 0 }) {
   const { hero, score } = entry;
   return <button disabled={refreshing} className="alt-pick-v27" onClick={() => onPick(hero, 'self')}>
-    <img src={hero.portrait} alt="" />
-    <span>{hero.localized_name}</span>
+    <HeroPortrait hero={hero} />
+    <span>{hero.localized_name}<small style={{display: "block", fontSize: "0.65rem"}}>{entry.rankingReason}</small></span>
     {enemyCount > 0 && <b className={score.enemyScore >= 0 ? 'positive' : 'negative'}>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b>}
   </button>;
 }
@@ -89,7 +90,7 @@ function AdvancedDetails({ entry, enemyCount }) {
   const { score } = entry;
   const evidence = evidenceFor(entry, enemyCount);
 
-  return <details className="advisor-details-v27">
+  return <details className="advisor-details-v27" open>
     <summary>DETAILS <span>⌄</span></summary>
     <div className="advisor-details-v27-body">
       <div className="advisor-details-v27-metrics">
@@ -122,18 +123,20 @@ export default function RecommendationPanel({
     <div className="advisor-bar-v27">
       <strong>PICK</strong>
       <div className="advisor-controls-v27">
-        <div className="role-tabs-v27" aria-label="Choose role">
+        <div className="role-tabs-v27" role="group" aria-label="Choose role">
           {positions.map(([key, short, title]) => <button
             key={key}
             className={laneFilter === key ? 'active' : ''}
+            aria-pressed={laneFilter === key}
             onClick={() => setLaneFilter(key)}
             title={title}
           >{short}</button>)}
         </div>
-        <div className="advisor-mode-tabs-v27" aria-label="Choose recommendation strategy">
+        <div className="advisor-mode-tabs-v27" role="group" aria-label="Choose recommendation strategy">
           {advisorModes.map(([key, label]) => <button
             key={key}
             className={advisorMode === key ? 'active' : ''}
+            aria-pressed={advisorMode === key}
             onClick={() => setAdvisorMode(key)}
             title={label}
           >{label}</button>)}
