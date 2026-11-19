@@ -13,7 +13,7 @@ assert.equal(connect.includes('player?.profile?.avatarfull'), true, 'left rail s
 assert.equal(app.includes('player={player} loading={profileLoading}'), true, 'App should pass resolved identity to the left rail');
 assert.equal(app.includes('<PlayerProfile '), false, 'advanced profile should not be dumped below the draft');
 
-assert.equal(grid.includes('beginnerMode ? 14 : 16'), true, 'quick picker should expose more heroes');
+assert.equal(grid.includes('q ? 12 : 16'), true, 'quick picker should expose more heroes');
 assert.equal(css.includes('overflow-x:auto!important'), true, 'quick picker should stay in a horizontal strip');
 assert.equal(css.includes('flex:0 0 104px!important'), true, 'quick hero cards should stay compact');
 

@@ -5,7 +5,7 @@ function ZMark() {
   return <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M8 10h48L36.5 31H50L56 54H8l19.5-21H14z" /></svg>;
 }
 
-export default function Topbar({ patch, player, profile, providerStatus, beginnerMode = true, onSetMode, onReset, onOpenProfile, onOpenLegal, onOpenAbout }) {
+export default function Topbar({ patch, player, profile, providerStatus, onReset, onOpenProfile, onOpenLegal, onOpenAbout }) {
   const avatar = player?.profile?.avatar || player?.profile?.avatarmedium;
   const name = player?.profile?.personaname || profile.displayName;
   return <>

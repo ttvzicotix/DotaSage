@@ -8,7 +8,7 @@ const itemPlan = fs.readFileSync(new URL('../src/components/SimpleItemPlan.jsx',
 const styles = fs.readFileSync(new URL('../src/styles/viewport-resilience.css', import.meta.url), 'utf8');
 
 assert.match(advisor, /const top = recommendations\[0\]/, 'the primary recommendation must be the first rank');
-assert.match(advisor, /recommendations\.slice\(1,\s*9\)\.map\(/, 'render eight alternatives after the primary pick');
+assert.match(advisor, /recommendations\.slice\(1,\s*visibleCount\)\.map\(/, 'render expandable alternatives after the primary pick');
 assert.match(advisor, /<PrimaryPick entry=\{top\}/, 'render the primary pick alongside alternatives');
 assert.match(advisor, /className="advisor-controls-v27"[\s\S]*className="role-tabs-v27"[\s\S]*className="advisor-mode-tabs-v27"/, 'both selectors should share the advisor control bar');
 assert.match(advisor, /className="role-tabs-v27" role="group" aria-label="Choose role"/, 'role selector needs an accessible group label');

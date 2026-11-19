@@ -17,7 +17,7 @@ const laneLabels = {
   jungle: 'JUNGLE',
   roam: 'ROAM',
 };
-function QuickHero({ hero, state, onAction, onPrefetchEvidence, playerSide, beginnerMode }) {
+function QuickHero({ hero, state, onAction, onPrefetchEvidence, playerSide }) {
   const used = state && state !== 'available';
   const radiantAction = playerSide === 'radiant' ? 'ally' : 'enemy';
   const direAction = playerSide === 'dire' ? 'ally' : 'enemy';
@@ -43,7 +43,7 @@ function QuickHero({ hero, state, onAction, onPrefetchEvidence, playerSide, begi
   </article>;
 }
 
-export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, heroes, scores, stateForHero, onAction, onPrefetchEvidence, query, setQuery, attr, setAttr, loadingLive, laneFilter, setLaneFilter, playerSide = 'radiant' }) {
+export default function HeroGrid({ allHeroes, roleHeroes, heroes, scores, stateForHero, onAction, onPrefetchEvidence, query, setQuery, attr, setAttr, loadingLive, laneFilter, setLaneFilter, playerSide = 'radiant' }) {
   const [expanded, setExpanded] = useState(false);
   const [rosterScope, setRosterScope] = useState('all');
   const [renderLimit, setRenderLimit] = useState(INITIAL_ROSTER);
@@ -66,8 +66,8 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
       .sort((a, b) => q
         ? (b.searchScore - a.searchScore || b.recommendationScore - a.recommendationScore || a.hero.localized_name.localeCompare(b.hero.localized_name))
         : (b.recommendationScore - a.recommendationScore || a.hero.localized_name.localeCompare(b.hero.localized_name)));
-    return rows.slice(0, q ? 12 : beginnerMode ? 14 : 16).map(row => row.hero);
-  }, [allHeroes, roleHeroes, laneFilter, beginnerMode, query, stateForHero, scores]);
+    return rows.slice(0, q ? 12 : 16).map(row => row.hero);
+  }, [allHeroes, roleHeroes, laneFilter, query, stateForHero, scores]);
 
   const scopedRosterHeroes = useMemo(() => {
     if (rosterScope !== 'position' || laneFilter === 'all') return heroes;
@@ -140,7 +140,7 @@ export default function HeroGrid({ beginnerMode = true, allHeroes, roleHeroes, h
     <div className="quick-hero-shelf persistent-hero-gallery">
       {query.trim() && <div className="quick-shelf-label"><span>RESULTS</span></div>}
       <div className="quick-hero-scroll">{quickHeroes.length
-        ? quickHeroes.map(hero => <QuickHero key={hero.id} hero={hero} state={stateForHero(hero.id)} onAction={runAction} onPrefetchEvidence={onPrefetchEvidence} playerSide={playerSide} beginnerMode={beginnerMode} />)
+        ? quickHeroes.map(hero => <QuickHero key={hero.id} hero={hero} state={stateForHero(hero.id)} onAction={runAction} onPrefetchEvidence={onPrefetchEvidence} playerSide={playerSide} />)
         : <div className="quick-no-results">{query.trim() ? 'No hero or alias matches that search.' : 'No available heroes match this role.'}</div>}</div>
     </div>
 

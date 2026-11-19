@@ -1,5 +1,5 @@
 export const CURRENT_PATCH = {
-  id: '7.41f',
-  released: '2026-09-15',
+  id: '7.42',
+  released: '2026-11-18',
   source: 'Valve / Dota 2 official gameplay patch',
 };

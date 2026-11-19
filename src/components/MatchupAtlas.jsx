@@ -1,24 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
+import { matchupEdge, alliedPair, draftTeam } from '../engine/teamComparison.js';
 import { fetchHeroEvidence } from '../services/openDota';
 
 const signed = value => value == null ? '—' : `${value > 0 ? '+' : ''}${value.toFixed(1)} pp`;
 const name = hero => hero?.localized_name || 'Unknown';
-const games = row => Number(row?.games_played || row?.games || 0);
-const edgeFrom = (rows, enemyId) => {
-  const baselineRows = rows.filter(row => games(row) > 0);
-  const total = baselineRows.reduce((acc, row) => ({ g: acc.g + games(row), w: acc.w + Number(row.wins || 0) }), { g: 0, w: 0 });
-  const matchup = rows.find(row => Number(row.hero_id) === Number(enemyId));
-  if (!matchup || !games(matchup) || !total.g) return null;
-  const winRate = Number(matchup.wins || 0) / games(matchup);
-  return { edge: Math.max(-25, Math.min(25, 100 * (winRate - total.w / total.g))), games: games(matchup), winRate, provider: matchup._provider || null };
-};
-
 export default function MatchupAtlas({ hero, allies = [], enemies = [], patch }) {
-  const team = useMemo(() => [hero, ...allies].filter(Boolean).filter((row, i, arr) => arr.findIndex(item => Number(item.id) === Number(row.id)) === i).slice(0, 5), [hero, allies]);
+  const team = useMemo(() => draftTeam(hero, allies), [hero, allies]);
   const [evidence, setEvidence] = useState(new Map());
   const [loading, setLoading] = useState(false);
   useEffect(() => {
     let cancelled = false;
+    setEvidence(new Map());
     setLoading(true);
     Promise.all(team.map(async member => {
       try { return [Number(member.id), await fetchHeroEvidence(member.id)]; }
@@ -26,43 +18,47 @@ export default function MatchupAtlas({ hero, allies = [], enemies = [], patch })
     })).then(rows => { if (!cancelled) setEvidence(new Map(rows)); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [team.map(row => row.id).join(',')]);
+  }, [team.map(row => row.id).join(','), patch?.id]);
 
   const matrix = useMemo(() => team.map(member => {
     const rows = evidence.get(Number(member.id))?.matchups || [];
-    const cells = enemies.slice(0, 5).map(enemy => edgeFrom(rows, enemy.id));
+    const cells = enemies.slice(0, 5).map(enemy => matchupEdge(rows, enemy.id));
     const known = cells.filter(Boolean);
-    return { member, cells, total: known.length ? known.reduce((sum, cell) => sum + cell.edge, 0) : null, known: known.length };
+    return { member, cells, total: known.length ? known.reduce((sum, cell) => sum + cell.edge, 0) / known.length : null, known: known.length };
   }), [team, enemies, evidence]);
-  const synergy = useMemo(() => team.map(member => {
-    const rows = evidence.get(Number(member.id))?.synergy || [];
-    return { member, partners: team.filter(other => Number(other.id) !== Number(member.id)).map(other => {
-      const row = rows.find(sample => Number(sample.hero_id) === Number(other.id));
-      const n = games(row);
-      return { other, n, winRate: n ? Number(row.wins || 0) / n * 100 : null };
-    }) };
-  }), [team, evidence]);
+  const synergy = useMemo(() => team.map(member => ({ member,
+    partners: team.filter(other => Number(other.id) !== Number(member.id)).map(other => alliedPair(member, other, evidence))
+  })), [team, evidence]);
+  const yourSynergy = synergy.find(row => Number(row.member.id) === Number(hero?.id));
 
   return <section className="gpv2-atlas gpv2-card">
     <div className="gpv2-card-head gpv2-atlas-head">
       <div><span>FULL DRAFT MATCHUP MATRIX</span><strong>All five allied heroes versus all five enemies</strong></div>
-      <small>Public hero matchups · patch {patch?.id || 'current'} {loading ? '· updating…' : ''}</small>
+      <small>Historical samples · current game patch {patch?.id || 'current'} {loading ? '· updating…' : ''}</small>
     </div>
+    {!team.length && <p className="comparison-empty">Add your hero or teammates to compare your lineup against the enemy team.</p>}
+    {!enemies.length && <p className="comparison-empty">Add enemies to see each teammate’s matchups. Allied synergy is available below.</p>}
     <div style={{ overflowX: 'auto', paddingBottom: 8 }}>
       <table className="dotasage-matrix" style={{ borderCollapse: 'separate', borderSpacing: 4, width: '100%', minWidth: 590, textAlign: 'center' }}>
-        <thead><tr><th style={{ textAlign: 'left' }}>ALLY / ENEMY</th>{enemies.slice(0, 5).map(enemy => <th key={enemy.id} title={name(enemy)}>{name(enemy)}</th>)}<th>NET EDGE</th></tr></thead>
+        <thead><tr><th style={{ textAlign: 'left' }}>ALLY / ENEMY</th>{enemies.slice(0, 5).map(enemy => <th key={enemy.id} title={name(enemy)}>{name(enemy)}</th>)}<th>AVG EDGE</th></tr></thead>
         <tbody>{matrix.map(row => <tr key={row.member.id}>
-          <th style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>{name(row.member)}</th>
+          <th style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>{name(row.member)}{Number(row.member.id) === Number(hero?.id) ? " (you)" : ""}</th>
           {enemies.slice(0, 5).map((enemy, i) => <td key={enemy.id} title={row.cells[i] ? `${row.cells[i].games} games · ${row.cells[i].provider || 'public'}` : 'No public matchup sample'} style={{ padding: '10px 6px', borderRadius: 5, color: row.cells[i] == null ? 'inherit' : row.cells[i].edge > 0 ? '#65dfad' : row.cells[i].edge < 0 ? '#ff8b9d' : 'inherit', background: 'rgba(130,130,160,.09)' }}>{signed(row.cells[i]?.edge)}</td>)}
           <td title={`${row.known} of ${enemies.length} enemy pairings sampled`}><strong>{signed(row.total)}</strong><small style={{ display: 'block' }}>{row.known}/{enemies.length} known</small></td>
         </tr>)}</tbody>
       </table>
     </div>
-    <p className="gpv2-atlas-foot">Positive values favor the allied hero relative to its matchup baseline. Net edge sums only known matchups; — means no sample, not a neutral result. Historical associations are not guaranteed outcomes.</p>
+    <p className="gpv2-atlas-foot">Positive values favor the allied hero relative to its matchup baseline. Average edge uses only known matchups and is not a team win probability; — means no sample, not a neutral result. Historical associations are not guaranteed outcomes.</p>
     {team.length > 1 && <div className="gpv2-atlas-synergy">
-      <div className="gpv2-card-head"><div><span>ALLIED SYNERGY</span><strong>Same-team performance (not ally-vs-ally counters)</strong></div></div>
-      <div style={{ display: 'grid', gap: 8, padding: '8px 0' }}>{synergy.map(row => <div key={row.member.id}><strong>{name(row.member)}</strong> {row.partners.map(pair => <span key={pair.other.id} style={{ display: 'inline-block', margin: '4px 8px 4px 0', padding: '5px 8px', background: 'rgba(130,130,160,.12)', borderRadius: 5 }} title={pair.n ? `${pair.n} same-team games` : 'No public synergy sample'}>{name(pair.other)}: {pair.winRate == null ? '—' : `${pair.winRate.toFixed(1)}% WR`}</span>)}</div>)}</div>
-      <p className="gpv2-atlas-foot">Synergy needs same-team pair samples. Missing samples stay unknown; no counter score is substituted.</p>
+      <div className="gpv2-card-head"><div><span>YOUR TEAM SYNERGY</span><strong>{hero ? `${name(hero)} with your teammates` : 'Select your hero to focus on your partnerships'}</strong></div></div>
+      <div className="synergy-pair-grid">{(yourSynergy ? [yourSynergy] : synergy).map(row => row.partners.map(pair => <article className="synergy-pair" key={`${row.member.id}-${pair.other.id}`}>
+        <strong>{name(row.member)} + {name(pair.other)}</strong>
+        <span>{pair.winRate == null ? 'No same-team statistical sample' : `${pair.winRate.toFixed(1)}% pair win rate · ${pair.n.toLocaleString()} games`}</span>
+        <b>Role complement: {pair.modeled > 0 ? '+' : ''}{pair.modeled.toFixed(1)} / 10 · modeled</b>
+        <p>{pair.explanation}</p>
+      </article>))}</div>
+      <p className="gpv2-atlas-foot">Role complement is a composition heuristic, not measured win-rate lift. Pair win rates are historical associations, not proof of synergy. Missing statistics stay unknown.</p>
+      {yourSynergy && <details className="all-team-synergy"><summary>All teammate partnerships</summary>{synergy.flatMap(row => row.partners.filter(pair => Number(row.member.id) < Number(pair.other.id)).map(pair => <p key={`${row.member.id}-${pair.other.id}`}><strong>{name(row.member)} + {name(pair.other)}</strong>: {pair.winRate == null ? 'No same-team sample' : `${pair.winRate.toFixed(1)}% WR · ${pair.n.toLocaleString()} games`}</p>))}</details>}
     </div>}
   </section>;
 }

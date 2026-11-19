@@ -35,15 +35,15 @@ assert.equal(
 );
 
 assert.equal(
-  app.includes('if (beginnerMode || !draft.allies.length)'),
+  app.includes('if (!draft.allies.length)'),
   true,
-  'simple mode should skip nonessential empirical ally-synergy network work',
+  'empty ally lineup should skip empirical synergy requests',
 );
 
 assert.equal(
-  app.includes('if (beginnerMode || !selected.length)'),
+  app.includes('if (!selected.length)'),
   true,
-  'simple mode should skip nonessential duration analytics',
+  'empty lineup should skip duration requests',
 );
 
 console.log('Draft responsiveness regression: PASS');
