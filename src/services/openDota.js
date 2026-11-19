@@ -96,7 +96,7 @@ async function getJson(path, { ttlMs = 0, cacheKey = path, retries = 2 } = {}) {
   let lastError;
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
-      const response = await fetch(`${BASE}${path}`, { headers: { Accept: 'application/json' } });
+      const response = await fetch(`${BASE}${path}`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
       if (!response.ok) {
         const error = new Error(`OpenDota ${response.status}: ${path}`);
         error.status = response.status;
@@ -135,7 +135,7 @@ async function getPlayerResource(resource, accountId, { ttlMs = 0, cacheKey, tak
       take: String(take),
       skip: String(skip),
     });
-    const response = await fetch(`/api/player?${query.toString()}`, { headers: { Accept: 'application/json' } });
+    const response = await fetch(`/api/player?${query.toString()}`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
     if (!response.ok) throw new Error(`Provider router ${response.status}`);
     const payload = await response.json();
     const value = withProviderTag(payload?.data, payload?.provider);
@@ -154,6 +154,7 @@ export async function requestPlayerRefresh(accountId) {
     const response = await fetch(`${BASE}/players/${accountId}/refresh`, {
       method: 'POST',
       headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(8000),
     });
     return response.ok;
   } catch {
@@ -277,6 +278,7 @@ export async function fetchHeroEvidence(heroId) {
   try {
     const response = await fetch(`/api/matchups?heroId=${encodeURIComponent(heroId)}`, {
       headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(8000),
     });
     if (!response.ok) throw new Error(`Matchup router ${response.status}`);
     const payload = await response.json();

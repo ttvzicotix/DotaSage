@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     if (!response.ok) throw new Error(`Valve patch feed returned ${response.status}`);
     const payload = await response.json();
     const patches = Array.isArray(payload?.patches) ? payload.patches : [];
-    const latest = patches.at(-1);
+    const latest = patches.filter(row => row?.patch_number).sort((a, b) => Number(b.patch_timestamp || 0) - Number(a.patch_timestamp || 0) || String(b.patch_number).localeCompare(String(a.patch_number), undefined, { numeric: true }))[0];
     if (!latest?.patch_number) throw new Error('Valve patch feed returned no patches');
 
     const timestamp = Number(latest.patch_timestamp || 0);

@@ -24,14 +24,14 @@ function TeamBlock({ label, type, side, heroes, count, onRemove }) {
   );
 }
 
-export default function DraftBoard({ beginnerMode = true, draft, onRemove, onClear, onOpenGamePlan, onCopyLink, copyStatus = '', playerSide = 'radiant', onSideChange, onSwapTeams, onlineLiveEnabled = false, onlineLiveStatus = {}, onToggleOnlineLive, liveDraftEnabled = false, liveDraftStatus = {}, onToggleLiveDraft }) {
+export default function DraftBoard({ draft, onRemove, onClear, onOpenGamePlan, onCopyLink, copyStatus = '', playerSide = 'radiant', onSideChange, onSwapTeams, onlineLiveEnabled = false, onlineLiveStatus = {}, onToggleOnlineLive, liveDraftEnabled = false, liveDraftStatus = {}, onToggleLiveDraft }) {
   const complete = draft.allies.length === 5 && draft.enemies.length === 5;
   return (
     <section className="draft-board glass-panel v06-draft-board">
       <div className="panel-head compact-head">
         <div><div className="eyebrow">LIVE DRAFT</div><h2>Lineups</h2></div>
         <div className="draft-head-actions">
-          {!beginnerMode && <details className="draft-more-menu">
+          {<details className="draft-more-menu">
             <summary>MORE <b>⌄</b></summary>
             <div className="draft-more-popover">
               <button className={onlineLiveEnabled && onlineLiveStatus.found ? 'active' : ''} onClick={onToggleOnlineLive}>
@@ -72,7 +72,7 @@ export default function DraftBoard({ beginnerMode = true, draft, onRemove, onCle
         {draft.self ? <>
           <div className="lock-hero"><img src={draft.self.portrait} alt="" /><strong>{draft.self.localized_name}</strong></div>
           <button className="primary-button" onClick={onOpenGamePlan}>{complete ? 'GAME PLAN' : 'PREVIEW GAME PLAN'} <b>→</b></button>
-          {!beginnerMode && !complete && <small className="draft-readiness">Pick locked. Complete both lineups to enter Game Plan automatically.</small>}
+          {!complete && <small className="draft-readiness">Pick locked. Complete both lineups to enter Game Plan automatically.</small>}
         </> : <div className="empty-pick-v27"><b>—</b></div>}
       </div>
     </section>

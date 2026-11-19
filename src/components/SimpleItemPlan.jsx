@@ -16,7 +16,7 @@ function buildCorePath(phases = []) {
       if (!id || seen.has(id)) continue;
       seen.add(id);
       rows.push({ ...row, phase });
-      if (rows.length >= 8) return rows;
+      if (rows.length >= 12) return rows;
     }
   }
   return rows;
@@ -47,7 +47,7 @@ export default function SimpleItemPlan({
   return <section className="simple-item-plan simple-plan-card">
     <div className="simple-plan-card-head">
       <div><span>ITEM PLAN</span><strong>Build path + matchup pivots</strong></div>
-      <small>{loading ? 'Loading public item trends…' : 'Adapts to enemy heroes and tracked items'}</small>
+      <small>{loading ? 'Loading public item trends…' : 'Automatically uses enemy heroes and typical purchases; manual observations are optional'}</small>
     </div>
 
     <div className="simple-core-route">

@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import HeroPortrait from './HeroPortrait';
 const positions = [
   ['all', 'FLEX', 'Any position'],
   ['safe', '1', 'Carry · Safe lane'],
@@ -11,6 +13,7 @@ export const positionOptions = positions.map(([key, short, title]) => [key, titl
 export const advisorModes = [
   ['best', 'Best pick'],
   ['counter', 'Counter'],
+  ['synergy', 'Team fit'],
   ['meta', 'Meta'],
   ['personal', 'For you'],
   ['learn', 'Learn'],
@@ -43,7 +46,7 @@ function ForecastStrip({ forecast = [], loading = false }) {
         key={row.hero.id}
         title="Heuristic forecast from role gaps, draft fit, popularity/meta and available matchup evidence."
       >
-        <img src={row.hero.portrait} alt="" />
+        <HeroPortrait hero={row.hero} />
         <b>{row.hero.localized_name}</b>
       </div>)}
       {loading && <i className="enemy-forecast-v27-loading" title="Refreshing forecast" />}
@@ -57,7 +60,7 @@ function PrimaryPick({ entry, onPick, enemyCount, refreshing = false }) {
 
   return <article className="pick-card-v27">
     <div className="pick-card-v27-art">
-      <img src={hero.portrait} alt="" />
+      <HeroPortrait hero={hero} />
     </div>
     <div className="pick-card-v27-body">
       <div className="pick-card-v27-title">
@@ -78,8 +81,8 @@ function PrimaryPick({ entry, onPick, enemyCount, refreshing = false }) {
 function AlternatePick({ entry, onPick, refreshing = false, enemyCount = 0 }) {
   const { hero, score } = entry;
   return <button disabled={refreshing} className="alt-pick-v27" onClick={() => onPick(hero, 'self')}>
-    <img src={hero.portrait} alt="" />
-    <span>{hero.localized_name}</span>
+    <HeroPortrait hero={hero} />
+    <span>{hero.localized_name}<small>{entry.rankingReason || (hero.roles || []).join(" · ")}</small><small>Fit {score.draftFit.toFixed(1)} · Team {score.synergyScore > 0 ? "+" : ""}{score.synergyScore.toFixed(1)} ({score.synergySource === "empirical" ? "sampled" : "modeled"})</small></span>
     {enemyCount > 0 && <b className={score.enemyScore >= 0 ? 'positive' : 'negative'}>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b>}
   </button>;
 }
@@ -89,12 +92,12 @@ function AdvancedDetails({ entry, enemyCount }) {
   const { score } = entry;
   const evidence = evidenceFor(entry, enemyCount);
 
-  return <details className="advisor-details-v27">
+  return <details className="advisor-details-v27" open>
     <summary>DETAILS <span>⌄</span></summary>
     <div className="advisor-details-v27-body">
       <div className="advisor-details-v27-metrics">
         <span><small>COUNTER</small><b>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b></span>
-        <span><small>SYNERGY</small><b>{score.synergyScore > 0 ? '+' : ''}{score.synergyScore.toFixed(1)}</b></span>
+        <span><small>SYNERGY ({score.synergySource === "empirical" ? "SAMPLED" : "MODELED"})</small><b>{score.synergyScore > 0 ? '+' : ''}{score.synergyScore.toFixed(1)}</b></span>
         <span><small>META</small><b>{score.metaScore.toFixed(1)}</b></span>
         <span><small>FUTURE</small><b>{score.futureCounterEvidence ? `${score.futureCounterScore > 0 ? '+' : ''}${score.futureCounterScore.toFixed(1)}` : '—'}</b></span>
         <span><small>EVIDENCE</small><b>{evidence.verified.length}/{Math.max(enemyCount, 0)}</b></span>
@@ -104,7 +107,6 @@ function AdvancedDetails({ entry, enemyCount }) {
 }
 
 export default function RecommendationPanel({
-  beginnerMode = true,
   recommendations,
   enemyForecast = [],
   forecastLoading = false,
@@ -116,24 +118,27 @@ export default function RecommendationPanel({
   setAdvisorMode,
   enemyCount = 0,
 }) {
+  const [visibleCount, setVisibleCount] = useState(18);
   const top = recommendations[0];
 
   return <section className={`recommend-panel-v27 ${matrixLoading ? 'is-refreshing' : ''}`} aria-busy={matrixLoading ? 'true' : 'false'}>
     <div className="advisor-bar-v27">
-      <strong>PICK</strong>
+      <strong>FIND YOUR PICK</strong>
       <div className="advisor-controls-v27">
-        <div className="role-tabs-v27" aria-label="Choose role">
+        <div className="role-tabs-v27" role="group" aria-label="Choose role">
           {positions.map(([key, short, title]) => <button
             key={key}
             className={laneFilter === key ? 'active' : ''}
+            aria-pressed={laneFilter === key}
             onClick={() => setLaneFilter(key)}
             title={title}
           >{short}</button>)}
         </div>
-        <div className="advisor-mode-tabs-v27" aria-label="Choose recommendation strategy">
+        <div className="advisor-mode-tabs-v27" role="group" aria-label="Choose recommendation strategy">
           {advisorModes.map(([key, label]) => <button
             key={key}
             className={advisorMode === key ? 'active' : ''}
+            aria-pressed={advisorMode === key}
             onClick={() => setAdvisorMode(key)}
             title={label}
           >{label}</button>)}
@@ -146,8 +151,9 @@ export default function RecommendationPanel({
 
     {top ? <>
       <PrimaryPick entry={top} onPick={onPick} enemyCount={enemyCount} refreshing={matrixLoading} />
+      <p className="suggestion-count">Showing {Math.min(visibleCount, recommendations.length)} of {recommendations.length} eligible heroes · strongest pick first</p>
       <div className="alt-picks-v27">
-        {recommendations.slice(1, 9).map(entry => <AlternatePick
+        {recommendations.slice(1, visibleCount).map(entry => <AlternatePick
           key={entry.hero.id}
           entry={entry}
           onPick={onPick}
@@ -155,7 +161,9 @@ export default function RecommendationPanel({
           enemyCount={enemyCount}
         />)}
       </div>
-      {!beginnerMode && <AdvancedDetails
+      {recommendations.length > visibleCount && <button className="show-more-picks" onClick={() => setVisibleCount(count => count + 18)}>Show 18 more suggestions</button>}
+      {visibleCount > 18 && <button className="show-more-picks" onClick={() => setVisibleCount(18)}>Show fewer</button>}
+      {<AdvancedDetails
         entry={top}
         enemyCount={enemyCount}
       />}

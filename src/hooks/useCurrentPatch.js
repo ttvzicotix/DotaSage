@@ -18,7 +18,7 @@ export default function useCurrentPatch() {
 
         let previous = null;
         try { previous = localStorage.getItem('dotasage:last-seen-patch'); } catch {}
-        if (previous && previous !== remote.id) clearPatchSensitiveCaches();
+        if (previous !== remote.id) clearPatchSensitiveCaches();
         try { localStorage.setItem('dotasage:last-seen-patch', remote.id); } catch {}
 
         setPatch({

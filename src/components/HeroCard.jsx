@@ -1,3 +1,4 @@
+import HeroPortrait from './HeroPortrait';
 function actionForMapSide(mapSide, playerSide) {
   return mapSide === playerSide ? 'ally' : 'enemy';
 }
@@ -9,7 +10,7 @@ export default function HeroCard({ hero, score, state, onAction, pickEligible = 
 
   return <article className={`roster-card-v27 ${used ? `used ${state}` : ''}`}>
     <div className="roster-card-v27-art">
-      <img src={hero.portrait} alt={hero.localized_name} loading="lazy" />
+      <HeroPortrait hero={hero} loading="lazy" />
     </div>
     <div className="roster-card-v27-foot">
       <strong>{hero.localized_name}</strong>

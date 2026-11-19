@@ -8,6 +8,7 @@ import './styles/layout-fixes.css';
 import './styles/gameplan-v2.css';
 import './styles/viewport-resilience.css';
 import './styles/matchup-atlas.css';
+import './styles/draft-upgrade.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

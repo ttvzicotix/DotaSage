@@ -1,101 +1,64 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchHeroMatchups } from '../services/openDota';
+import { matchupEdge, alliedPair, draftTeam } from '../engine/teamComparison.js';
+import { fetchHeroEvidence } from '../services/openDota';
 
-const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-
-function signedPoints(value) {
-  if (value == null || !Number.isFinite(Number(value))) return '—';
-  const n = Number(value);
-  return `${n > 0 ? '+' : ''}${n.toFixed(1)} pp`;
-}
-
+const signed = value => value == null ? '—' : `${value > 0 ? '+' : ''}${value.toFixed(1)} pp`;
+const name = hero => hero?.localized_name || 'Unknown';
 export default function MatchupAtlas({ hero, allies = [], enemies = [], patch }) {
-  const [status, setStatus] = useState('loading');
-  const [matchups, setMatchups] = useState([]);
-  const [sort, setSort] = useState('team');
-
+  const team = useMemo(() => draftTeam(hero, allies), [hero, allies]);
+  const [evidence, setEvidence] = useState(new Map());
+  const [loading, setLoading] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    setStatus('loading');
-    fetchHeroMatchups(hero.id)
-      .then(rows => {
-        if (cancelled) return;
-        setMatchups(Array.isArray(rows) ? rows : []);
-        setStatus('ready');
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setStatus('error');
-      });
+    setEvidence(new Map());
+    setLoading(true);
+    Promise.all(team.map(async member => {
+      try { return [Number(member.id), await fetchHeroEvidence(member.id)]; }
+      catch { return [Number(member.id), { matchups: [], synergy: [] }]; }
+    })).then(rows => { if (!cancelled) setEvidence(new Map(rows)); })
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [hero.id]);
+  }, [team.map(row => row.id).join(','), patch?.id]);
 
-  const rows = useMemo(() => {
-    const byId = new Map(matchups.map(row => [Number(row.hero_id), row]));
-    const totals = matchups.reduce((acc, row) => {
-      const games = Number(row.games_played || 0);
-      const wins = Number(row.wins || 0);
-      if (games > 0) { acc.games += games; acc.wins += wins; }
-      return acc;
-    }, { games: 0, wins: 0 });
-    const baseline = totals.games ? totals.wins / totals.games : 0.5;
-
-    const selected = [
-      ...(allies || []).filter(row => Number(row.id) !== Number(hero.id)).map(row => ({ hero: row, team: 'ally' })),
-      ...(enemies || []).filter(row => Number(row.id) !== Number(hero.id)).map(row => ({ hero: row, team: 'enemy' })),
-    ].filter((row, index, all) => all.findIndex(candidate => Number(candidate.hero.id) === Number(row.hero.id)) === index);
-
-    return selected.map(({ hero: otherHero, team }) => {
-      const sample = byId.get(Number(otherHero.id));
-      const games = Number(sample?.games_played || 0);
-      const wins = Number(sample?.wins || 0);
-      const winRate = games ? wins / games : null;
-      const edge = winRate == null ? null : clamp((winRate - baseline) * 100, -25, 25);
-      return { hero: otherHero, team, games, winRate, edge };
-    });
-  }, [allies, enemies, hero.id, matchups]);
-
-  const providers = useMemo(() => [...new Set(matchups.map(row => row?._provider).filter(Boolean))], [matchups]);
-  const providerLabel = providers.length ? providers.join(' + ') : 'public matchup data';
-
-  const visible = useMemo(() => [...rows].sort((a, b) => {
-    if (sort === 'hardest') {
-      if (a.edge == null && b.edge != null) return 1;
-      if (a.edge != null && b.edge == null) return -1;
-      return Number(a.edge || 0) - Number(b.edge || 0);
-    }
-    if (sort === 'best') {
-      if (a.edge == null && b.edge != null) return 1;
-      if (a.edge != null && b.edge == null) return -1;
-      return Number(b.edge || 0) - Number(a.edge || 0);
-    }
-    if (a.team !== b.team) return a.team === 'ally' ? -1 : 1;
-    return String(a.hero.localized_name || '').localeCompare(String(b.hero.localized_name || ''));
-  }), [rows, sort]);
+  const matrix = useMemo(() => team.map(member => {
+    const rows = evidence.get(Number(member.id))?.matchups || [];
+    const cells = enemies.slice(0, 5).map(enemy => matchupEdge(rows, enemy.id));
+    const known = cells.filter(Boolean);
+    return { member, cells, total: known.length ? known.reduce((sum, cell) => sum + cell.edge, 0) / known.length : null, known: known.length };
+  }), [team, enemies, evidence]);
+  const synergy = useMemo(() => team.map(member => ({ member,
+    partners: team.filter(other => Number(other.id) !== Number(member.id)).map(other => alliedPair(member, other, evidence))
+  })), [team, evidence]);
+  const yourSynergy = synergy.find(row => Number(row.member.id) === Number(hero?.id));
 
   return <section className="gpv2-atlas gpv2-card">
     <div className="gpv2-card-head gpv2-atlas-head">
-      <div><span>DRAFT MATCHUP CHART</span><strong>{hero.localized_name} vs only the heroes in this game</strong></div>
-      <small>4 teammates + 5 enemies max · {providerLabel} · patch {patch?.id || 'current'}</small>
+      <div><span>FULL DRAFT MATCHUP MATRIX</span><strong>All five allied heroes versus all five enemies</strong></div>
+      <small>Historical samples · current game patch {patch?.id || 'current'} {loading ? '· updating…' : ''}</small>
     </div>
-
-    <div className="gpv2-atlas-controls draft-only">
-      <div className="gpv2-atlas-scope">No full hero board here — this chart follows the entered draft only.</div>
-      <div>{[['team', 'TEAM'], ['hardest', 'HARDEST'], ['best', 'BEST']].map(([value, label]) => <button className={sort === value ? 'active' : ''} key={value} onClick={() => setSort(value)}>{label}</button>)}</div>
+    {!team.length && <p className="comparison-empty">Add your hero or teammates to compare your lineup against the enemy team.</p>}
+    {!enemies.length && <p className="comparison-empty">Add enemies to see each teammate’s matchups. Allied synergy is available below.</p>}
+    <div style={{ overflowX: 'auto', paddingBottom: 8 }}>
+      <table className="dotasage-matrix" style={{ borderCollapse: 'separate', borderSpacing: 4, width: '100%', minWidth: 590, textAlign: 'center' }}>
+        <thead><tr><th style={{ textAlign: 'left' }}>ALLY / ENEMY</th>{enemies.slice(0, 5).map(enemy => <th key={enemy.id} title={name(enemy)}>{name(enemy)}</th>)}<th>AVG EDGE</th></tr></thead>
+        <tbody>{matrix.map(row => <tr key={row.member.id}>
+          <th style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>{name(row.member)}{Number(row.member.id) === Number(hero?.id) ? " (you)" : ""}</th>
+          {enemies.slice(0, 5).map((enemy, i) => <td key={enemy.id} title={row.cells[i] ? `${row.cells[i].games} games · ${row.cells[i].provider || 'public'}` : 'No public matchup sample'} style={{ padding: '10px 6px', borderRadius: 5, color: row.cells[i] == null ? 'inherit' : row.cells[i].edge > 0 ? '#65dfad' : row.cells[i].edge < 0 ? '#ff8b9d' : 'inherit', background: 'rgba(130,130,160,.09)' }}>{signed(row.cells[i]?.edge)}</td>)}
+          <td title={`${row.known} of ${enemies.length} enemy pairings sampled`}><strong>{signed(row.total)}</strong><small style={{ display: 'block' }}>{row.known}/{enemies.length} known</small></td>
+        </tr>)}</tbody>
+      </table>
     </div>
-
-    {status === 'loading' && <p className="gpv2-atlas-status">Loading matchup evidence for this draft…</p>}
-    {status === 'error' && <p className="gpv2-atlas-status">Public matchup providers are unavailable right now.</p>}
-    {status === 'ready' && <>
-      <div className="gpv2-atlas-legend"><span className="ally">ALLY · REFERENCE ONLY</span><span className="drafted">ENEMY</span><span>WR = {hero.localized_name}'s historical win rate against that hero</span></div>
-      <div className="gpv2-atlas-grid draft-only-grid">
-        {visible.map(row => <article key={row.hero.id} className={`${row.team} ${row.edge == null ? 'unknown' : row.edge >= 0 ? 'positive' : 'negative'}`}>
-          <img src={row.hero.portrait} alt="" loading="lazy" />
-          <div className="gpv2-atlas-copy"><b>{row.hero.localized_name}</b><em>{row.team === 'ally' ? 'ALLY · REFERENCE' : 'ENEMY'}</em><small>{row.games ? `${row.games.toLocaleString()} games · ${matchups.find(sample => Number(sample.hero_id) === Number(row.hero.id))?._provider || providerLabel}` : 'no public sample'}</small></div>
-          <div className="gpv2-atlas-numbers"><strong>{row.winRate == null ? '—' : `${(row.winRate * 100).toFixed(1)}%`}</strong><span>{signedPoints(row.edge)}</span></div>
-        </article>)}
-      </div>
-      <p className="gpv2-atlas-foot">Ally rows are direct head-to-head history for context, not same-team synergy. Enemy rows are the relevant counter evidence for this draft. Source: {providerLabel}.</p>
-    </>}
+    <p className="gpv2-atlas-foot">Positive values favor the allied hero relative to its matchup baseline. Average edge uses only known matchups and is not a team win probability; — means no sample, not a neutral result. Historical associations are not guaranteed outcomes.</p>
+    {team.length > 1 && <div className="gpv2-atlas-synergy">
+      <div className="gpv2-card-head"><div><span>YOUR TEAM SYNERGY</span><strong>{hero ? `${name(hero)} with your teammates` : 'Select your hero to focus on your partnerships'}</strong></div></div>
+      <div className="synergy-pair-grid">{(yourSynergy ? [yourSynergy] : synergy).map(row => row.partners.map(pair => <article className="synergy-pair" key={`${row.member.id}-${pair.other.id}`}>
+        <strong>{name(row.member)} + {name(pair.other)}</strong>
+        <span>{pair.winRate == null ? 'No same-team statistical sample' : `${pair.winRate.toFixed(1)}% pair win rate · ${pair.n.toLocaleString()} games`}</span>
+        <b>Role complement: {pair.modeled > 0 ? '+' : ''}{pair.modeled.toFixed(1)} / 10 · modeled</b>
+        <p>{pair.explanation}</p>
+      </article>))}</div>
+      <p className="gpv2-atlas-foot">Role complement is a composition heuristic, not measured win-rate lift. Pair win rates are historical associations, not proof of synergy. Missing statistics stay unknown.</p>
+      {yourSynergy && <details className="all-team-synergy"><summary>All teammate partnerships</summary>{synergy.flatMap(row => row.partners.filter(pair => Number(row.member.id) < Number(pair.other.id)).map(pair => <p key={`${row.member.id}-${pair.other.id}`}><strong>{name(row.member)} + {name(pair.other)}</strong>: {pair.winRate == null ? 'No same-team sample' : `${pair.winRate.toFixed(1)}% WR · ${pair.n.toLocaleString()} games`}</p>))}</details>}
+    </div>}
   </section>;
 }
