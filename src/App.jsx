@@ -133,6 +133,9 @@ export default function App() {
   const [providerStatus, setProviderStatus] = useState(null);
   const [roleMeta, setRoleMeta] = useState({ provider: null, position: null, rows: [] });
   const [copyDraftStatus, setCopyDraftStatus] = useState('');
+  const [recentSuggestions, setRecentSuggestions] = useState(() => {
+    try { const rows = JSON.parse(localStorage.getItem('dotasage:recent-suggestions') || '[]'); return Array.isArray(rows) ? rows.slice(0, 36) : []; } catch { return []; }
+  });
   const [draftTab, setDraftTab] = useState('picks');
   const [draftSessionHydrated, setDraftSessionHydrated] = useState(false);
   const lastAutoPlanSignatureRef = useRef('');
@@ -820,8 +823,17 @@ export default function App() {
       const rest = rows.filter(x => !stretch.includes(x)).sort((a,b) => b.score.draftFit - a.score.draftFit);
       rows = [...stretch, ...rest];
     } else rows.sort((a,b) => b.score.draftFit - a.score.draftFit || b.score.overall - a.score.overall);
-    return advisorMode === 'best' ? diversifyRecommendations(rows, rows.length) : rows;
-  }, [roleEligibleHeroes, usedIds, scoreBundle, advisorMode]);
+    return advisorMode === 'best' ? diversifyRecommendations(rows, rows.length, { recentIds: recentSuggestions }) : rows;
+  }, [roleEligibleHeroes, usedIds, scoreBundle, advisorMode, recentSuggestions]);
+
+  const suggestionSignature = recommendations.slice(1, 18).map(row => row.hero.id).join(',');
+  useEffect(() => {
+    if (advisorMode !== 'best' || matrixLoading || !suggestionSignature) return;
+    try { localStorage.setItem('dotasage:recent-suggestions', JSON.stringify(suggestionSignature.split(',').map(Number))); } catch {}
+  }, [suggestionSignature, advisorMode, matrixLoading]);
+  function refreshAlternatives() {
+    setRecentSuggestions(recommendations.slice(1, 18).map(row => row.hero.id));
+  }
 
   const personalSummary = useMemo(() => {
     const values = heroes.map(h => scoreBundle.scores.get(h.id)?.personal).filter(Boolean);
@@ -1033,7 +1045,7 @@ export default function App() {
             <button aria-pressed={draftTab === 'comparison'} onClick={() => setDraftTab('comparison')}>Team comparison & synergy</button>
           </nav>
           <p className="patch-context">Patch {patch.id} · Live provider statistics may include earlier patches. Meta rankings are provisional; matchup and synergy samples are historical.</p>
-          {draftTab === 'comparison' ? <MatchupAtlas hero={draft.self} allies={draft.allies} enemies={draft.enemies} patch={patch} /> : <RecommendationPanel recommendations={recommendations} enemyForecast={enemyForecast} forecastLoading={forecastLoading} onPick={actOnHero} draftComplete={draftComplete} allyCount={draft.allies.length} enemyCount={draft.enemies.length} laneLabel={laneLabels[laneFilter]} laneFilter={laneFilter} setLaneFilter={setLaneFilter} matrixLoading={matrixLoading} advisorMode={advisorMode} setAdvisorMode={setAdvisorMode} playerSide={playerSide} patch={patch} providerStatus={providerStatus} />}
+          {draftTab === 'comparison' ? <MatchupAtlas hero={draft.self} allies={draft.allies} enemies={draft.enemies} patch={patch} /> : <RecommendationPanel onRefreshAlternatives={refreshAlternatives} recommendations={recommendations} enemyForecast={enemyForecast} forecastLoading={forecastLoading} onPick={actOnHero} draftComplete={draftComplete} allyCount={draft.allies.length} enemyCount={draft.enemies.length} laneLabel={laneLabels[laneFilter]} laneFilter={laneFilter} setLaneFilter={setLaneFilter} matrixLoading={matrixLoading} advisorMode={advisorMode} setAdvisorMode={setAdvisorMode} playerSide={playerSide} patch={patch} providerStatus={providerStatus} />}
 
 
         </main>

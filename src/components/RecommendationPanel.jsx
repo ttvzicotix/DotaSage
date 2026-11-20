@@ -54,45 +54,32 @@ function ForecastStrip({ forecast = [], loading = false }) {
   </div>;
 }
 
-function PrimaryPick({ entry, onPick, enemyCount, refreshing = false }) {
+function PickCard({ entry, onPick, enemyCount, refreshing, featured = false }) {
   const { hero, score } = entry;
   const evidence = evidenceFor(entry, enemyCount);
-
-  return <article className="pick-card-v27">
-    <div className="pick-card-v27-art">
-      <HeroPortrait hero={hero} />
-    </div>
-    <div className="pick-card-v27-body">
-      <div className="pick-card-v27-title">
-        <strong>{hero.localized_name}</strong>
-        <b>{score.draftFit.toFixed(1)}</b>
+  const signed = value => `${value > 0 ? '+' : ''}${value.toFixed(1)}`;
+  return <article className={`sage-pick ${featured ? 'sage-pick--featured' : ''}`}>
+    <div className="sage-pick-portrait"><HeroPortrait hero={hero} /></div>
+    <div className="sage-pick-content">
+      <div className="sage-pick-heading"><div><small>{featured ? 'LEADING PICK' : entry.rankingReason || 'ALTERNATIVE'}</small><h3>{hero.localized_name}</h3></div><div className="sage-pick-fit"><b>{score.draftFit.toFixed(1)}</b><small>FIT / 10</small></div></div>
+      <p className="sage-pick-roles">{(hero.roles || []).slice(0, 3).join(' · ')}</p>
+      <div className="sage-pick-metrics">
+        <span>Counter <b>{enemyCount && evidence.verified.length ? signed(score.enemyScore) : '—'}</b></span>
+        <span title={score.synergySource === 'empirical' ? 'Same-team samples' : 'Modeled role complement'}>Team <b>{signed(score.synergyScore)}</b><small>{score.synergySource === 'empirical' ? 'sampled' : 'modeled'}</small></span>
       </div>
-      {enemyCount > 0 && <div className="pick-card-v27-chips">
-        <span className={score.enemyScore >= 0 ? 'positive' : 'negative'}>VS {score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</span>
-        <span>{evidence.label} CONF</span>
-      </div>}
-      <button disabled={refreshing} onClick={() => onPick(hero, 'self')}>
-        {refreshing ? 'UPDATING…' : 'PICK'}
-      </button>
+      <button className="sage-pick-action" disabled={refreshing} onClick={() => onPick(hero, 'self')} aria-label={`Pick ${hero.localized_name}`}>{refreshing ? 'Updating…' : `Pick ${hero.localized_name}`}</button>
     </div>
   </article>;
 }
-
-function AlternatePick({ entry, onPick, refreshing = false, enemyCount = 0 }) {
-  const { hero, score } = entry;
-  return <button disabled={refreshing} className="alt-pick-v27" onClick={() => onPick(hero, 'self')}>
-    <HeroPortrait hero={hero} />
-    <span>{hero.localized_name}<small>{entry.rankingReason || (hero.roles || []).join(" · ")}</small><small>Fit {score.draftFit.toFixed(1)} · Team {score.synergyScore > 0 ? "+" : ""}{score.synergyScore.toFixed(1)} ({score.synergySource === "empirical" ? "sampled" : "modeled"})</small></span>
-    {enemyCount > 0 && <b className={score.enemyScore >= 0 ? 'positive' : 'negative'}>{score.enemyScore > 0 ? '+' : ''}{score.enemyScore.toFixed(1)}</b>}
-  </button>;
-}
+function PrimaryPick(props) { return <PickCard {...props} featured />; }
+function AlternatePick(props) { return <PickCard {...props} />; }
 
 function AdvancedDetails({ entry, enemyCount }) {
   if (!entry) return null;
   const { score } = entry;
   const evidence = evidenceFor(entry, enemyCount);
 
-  return <details className="advisor-details-v27" open>
+  return <details className="advisor-details-v27">
     <summary>DETAILS <span>⌄</span></summary>
     <div className="advisor-details-v27-body">
       <div className="advisor-details-v27-metrics">
@@ -108,6 +95,7 @@ function AdvancedDetails({ entry, enemyCount }) {
 
 export default function RecommendationPanel({
   recommendations,
+  onRefreshAlternatives,
   enemyForecast = [],
   forecastLoading = false,
   onPick,
@@ -121,7 +109,7 @@ export default function RecommendationPanel({
   const [visibleCount, setVisibleCount] = useState(18);
   const top = recommendations[0];
 
-  return <section className={`recommend-panel-v27 ${matrixLoading ? 'is-refreshing' : ''}`} aria-busy={matrixLoading ? 'true' : 'false'}>
+  return <section className={`recommend-panel-v27 sage-advisor ${matrixLoading ? 'is-refreshing' : ''}`} aria-busy={matrixLoading ? 'true' : 'false'}>
     <div className="advisor-bar-v27">
       <strong>FIND YOUR PICK</strong>
       <div className="advisor-controls-v27">
@@ -152,7 +140,8 @@ export default function RecommendationPanel({
     {top ? <>
       <PrimaryPick entry={top} onPick={onPick} enemyCount={enemyCount} refreshing={matrixLoading} />
       <p className="suggestion-count">Showing {Math.min(visibleCount, recommendations.length)} of {recommendations.length} eligible heroes · strongest pick first</p>
-      <div className="alt-picks-v27">
+      {advisorMode === 'best' && <div className="sage-variety-bar"><span>Close alternatives vary; the leading pick stays strongest.</span><button disabled={matrixLoading} onClick={onRefreshAlternatives}>Fresh alternatives</button></div>}
+      <div className="sage-picks-grid">
         {recommendations.slice(1, visibleCount).map(entry => <AlternatePick
           key={entry.hero.id}
           entry={entry}
