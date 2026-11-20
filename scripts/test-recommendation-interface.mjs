@@ -29,4 +29,4 @@ assert.match(itemPlan, /conditionals\.slice\(0,\s*6\)/, 'six conditional pivots 
 assert.match(styles, /\.advisor-mode-tabs-v27\s*\{/, 'mode styles should exist in the compact advisor');
 assert.match(styles, /\.alt-picks-v27\s*\{/, 'alternative picks should have responsive compact styling');
 
-console.log('Expanded nine-pick advisor, role/strategy controls and item-plan wiring: PASS');
+console.log('Expandable advisor, role/strategy controls and item-plan wiring: PASS');

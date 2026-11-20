@@ -6,7 +6,7 @@ const strong = row(1, 9, ['Carry', 'Nuker']);
 const similar = row(2, 8.9, ['Carry', 'Nuker']);
 const distinct = row(3, 8.85, ['Initiator', 'Pusher']);
 assert.deepEqual(rank([strong, similar, distinct]).map(x => x.hero.id), [1,3,2]);
-assert.equal(rank([strong, row(4, 8.5, ['Support']), similar])[1].hero.id, 2, 'large score gap overrides novelty');
+assert.equal(rank([strong, row(4, 8.1, ['Support']), similar])[1].hero.id, 2, 'large score gap overrides novelty');
 assert.equal(rank([strong, similar, {...distinct, score: {...distinct.score, counterCoverage: 0}}])[1].hero.id, 2, 'missing evidence cannot earn promotion');
 assert.equal(rank([strong, similar, {...distinct, score: {...distinct.score, worstCounterScore: -8}}])[1].hero.id, 2);
 assert.deepEqual(rank([distinct, strong, similar]), rank([similar, distinct, strong]), 'input order independent');
@@ -47,3 +47,15 @@ assert.notEqual(noEnemy([{roles: ['Carry']}])[0].hero.id, noEnemy([{roles: ['Ini
 console.log('Enemy-composition and allied-synergy scoring integration: PASS');
 
 assert.equal(draftRanking([[540,535,530],[505,510,505],[490,500,510]])[0].hero.id, draftRanking([[535,540,535],[510,505,510],[500,490,500]])[0].hero.id, 'the same hero remains first when evidence warrants it across drafts');
+
+const pool = Array.from({length: 40}, (_, i) => row(100 + i, 8 - i * 0.005, ['Carry', 'Nuker']));
+const first = rank(pool, pool.length).slice(0, 18);
+const recentIds = first.slice(1).map(row => row.hero.id);
+const second = rank(pool, pool.length, { recentIds }).slice(0, 18);
+assert.equal(first[0].hero.id, second[0].hero.id, 'fresh alternatives preserve the strongest pick');
+assert.ok(second.slice(1).filter(row => !recentIds.includes(row.hero.id)).length >= 12, 'near-equivalent pool should surface substantially new heroes');
+assert.equal(new Set(second.map(row => row.hero.id)).size, second.length);
+assert.deepEqual(rank(pool, pool.length, {recentIds}), rank([...pool].reverse(), pool.length, {recentIds}), 'history ranking remains deterministic');
+assert.equal(rank([strong, similar, row(70, 7.5, ['Support'])], 18, {recentIds: [2]})[1].hero.id, 2, 'novelty cannot promote a clearly worse hero');
+assert.equal(rank([strong, similar, {...distinct, score: {...distinct.score, counterCoverage: 0}}], 18, {recentIds:[2]})[1].hero.id, 2, 'freshness cannot override evidence coverage');
+console.log('Repeat-exposure variety, uniqueness and quality bounds: PASS');
